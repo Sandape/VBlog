@@ -85,12 +85,12 @@ export default new Router({
     }, {
       path: '/home',
       component: Home,
-      name: '栏目管理',
+      name: '专题管理',
       children: [
         {
           path: '/cateMana',
           iconCls: 'fa fa-reorder',
-          name: '栏目管理',
+          name: '专题管理',
           component: CateMana
         }
       ]
