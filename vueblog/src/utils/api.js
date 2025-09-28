@@ -154,3 +154,28 @@ export const getPromptLogDetail = (id) => {
 export const deletePromptLog = (id) => {
   return deleteRequest(`/prompt/logs/${id}`)
 }
+// ========== 使用统计相关API ==========
+
+// 获取使用记录列表
+export const getUsageLogs = (page, count) => {
+  return getRequest('/article/usageLogs', {
+    params: { page, count }
+  })
+}
+
+// 按用户统计使用次数
+export const getUsageStatsByUser = () => {
+  return getRequest('/article/usageStatsByUser')
+}
+
+// 根据用户名搜索使用记录
+export const searchUsageLogs = (username, page, count) => {
+  return getRequest('/article/searchUsageLogs', {
+    params: { username, page, count }
+  })
+}
+
+// 获取用户使用统计（个人使用情况）
+export const getUserUsageStats = () => {
+  return getRequest('/article/userUsageStats')
+}
