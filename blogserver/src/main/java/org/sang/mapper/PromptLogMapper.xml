@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.sang.mapper.PromptLogMapper">
+
+    <!-- 基础字段映射 -->
+    <resultMap id="BaseResultMap" type="org.sang.bean.PromptLog">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="project_id" property="projectId" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="api_name" property="apiName" jdbcType="VARCHAR"/>
+        <result column="api_path" property="apiPath" jdbcType="VARCHAR"/>
+        <result column="api_desc" property="apiDesc" jdbcType="LONGVARCHAR"/>
+        <result column="api_request" property="apiRequest" jdbcType="LONGVARCHAR"/>
+        <result column="api_response" property="apiResponse" jdbcType="LONGVARCHAR"/>
+        <result column="api_sql" property="apiSql" jdbcType="LONGVARCHAR"/>
+        <result column="ai_response" property="aiResponse" jdbcType="LONGVARCHAR"/>
+        <result column="final_prompt" property="finalPrompt" jdbcType="LONGVARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 详细信息映射（包含关联信息） -->
+    <resultMap id="DetailResultMap" type="org.sang.bean.PromptLog" extends="BaseResultMap">
+        <result column="project_name" property="projectName" jdbcType="VARCHAR"/>
+        <result column="user_nickname" property="userNickname" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <!-- 插入日志记录 -->
+    <insert id="insertPromptLog" parameterType="org.sang.bean.PromptLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO prompt_log (
+            project_id, user_id, api_name, api_path, api_desc, 
+            api_request, api_response, api_sql, ai_response, final_prompt
+        ) VALUES (
+            #{projectId}, #{userId}, #{apiName}, #{apiPath}, #{apiDesc},
+            #{apiRequest}, #{apiResponse}, #{apiSql}, #{aiResponse}, #{finalPrompt}
+        )
+    </insert>
+
+    <!-- 根据ID查询日志 -->
+    <select id="getPromptLogById" parameterType="java.lang.Long" resultMap="DetailResultMap">
+        SELECT 
+            pl.*,
+            p.project_name,
+            u.nickname as user_nickname
+        FROM prompt_log pl
+        LEFT JOIN project p ON pl.project_id = p.id
+        LEFT JOIN user u ON pl.user_id = u.id
+        WHERE pl.id = #{id}
+    </select>
+
+    <!-- 根据项目ID查询日志列表 -->
+    <select id="getPromptLogsByProjectId" resultMap="DetailResultMap">
+        SELECT 
+            pl.*,
+            p.project_name,
+            u.nickname as user_nickname
+        FROM prompt_log pl
+        LEFT JOIN project p ON pl.project_id = p.id
+        LEFT JOIN user u ON pl.user_id = u.id
+        LEFT JOIN project_member pm ON pl.project_id = pm.project_id AND pm.user_id = #{userId}
+        WHERE pl.project_id = #{projectId}
+        AND (pm.user_id IS NOT NULL OR p.owner_id = #{userId})
+        ORDER BY pl.create_time DESC
+    </select>
+
+    <!-- 根据用户ID查询日志列表 -->
+    <select id="getPromptLogsByUserId" parameterType="java.lang.Long" resultMap="DetailResultMap">
+        SELECT 
+            pl.*,
+            p.project_name,
+            u.nickname as user_nickname
+        FROM prompt_log pl
+        LEFT JOIN project p ON pl.project_id = p.id
+        LEFT JOIN user u ON pl.user_id = u.id
+        WHERE pl.user_id = #{userId}
+        ORDER BY pl.create_time DESC
+    </select>
+
+    <!-- 更新AI响应和最终Prompt -->
+    <update id="updatePromptLogResult">
+        UPDATE prompt_log 
+        SET ai_response = #{aiResponse}, 
+            final_prompt = #{finalPrompt},
+            update_time = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除日志记录 -->
+    <delete id="deletePromptLog">
+        DELETE FROM prompt_log 
+        WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+</mapper>

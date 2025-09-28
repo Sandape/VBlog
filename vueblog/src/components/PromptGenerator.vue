@@ -49,11 +49,11 @@
       </div>
     </div>
     
-    <!-- Prompt生成阶段 -->
+    <!-- Prompt生成表单阶段 -->
     <div v-if="selectedProject" class="prompt-generation">
       <div class="generation-header">
         <el-button @click="backToSelection" icon="el-icon-arrow-left" type="text">返回项目选择</el-button>
-        <h2>{{ selectedProject.projectName }} - Prompt生成</h2>
+        <h2>{{ selectedProject.projectName }} - 接口Prompt生成</h2>
         <div class="project-config-info">
           <el-tag type="primary" size="small">{{ selectedProject.modelName }}</el-tag>
           <span class="api-url">{{ getDisplayUrl(selectedProject.apiUrl) }}</span>
@@ -61,83 +61,155 @@
       </div>
       
       <el-row :gutter="20">
+        <!-- 表单填写区域 -->
         <el-col :span="16">
-          <el-card class="chat-card">
+          <el-card class="form-card">
             <div slot="header" class="card-header">
-              <span>对话区域</span>
-              <el-button @click="clearChat" type="text" icon="el-icon-delete">清空对话</el-button>
+              <span>接口信息填写</span>
+              <el-button @click="resetForm" type="text" icon="el-icon-refresh">重置表单</el-button>
             </div>
             
-            <!-- 消息列表 -->
-            <div class="message-list" ref="messageList">
-              <div v-for="(message, index) in messages" :key="index" class="message-item">
-                <div :class="['message', message.role]">
-                  <div class="message-header">
-                    <span class="role-label">{{ message.role === 'user' ? '用户' : 'AI助手' }}</span>
-                    <span class="timestamp">{{ formatTime(message.timestamp) }}</span>
-                  </div>
-                  <div class="message-content" v-html="formatMessage(message.content)"></div>
-                  <div v-if="message.role === 'assistant'" class="message-actions">
-                    <el-button @click="copyMessage(message.content)" type="text" size="mini" icon="el-icon-copy-document">复制</el-button>
-                  </div>
-                </div>
-              </div>
+            <el-form :model="apiForm" :rules="formRules" ref="apiForm" label-width="120px">
+              <!-- 基础信息 -->
+              <el-form-item label="接口名称" prop="apiName">
+                <el-input v-model="apiForm.apiName" placeholder="请输入接口名称，如：用户登录接口"></el-input>
+              </el-form-item>
               
-              <!-- 加载中提示 -->
-              <div v-if="isGenerating" class="message-item">
-                <div class="message assistant loading">
-                  <div class="message-header">
-                    <span class="role-label">AI助手</span>
+              <el-form-item label="接口路径" prop="apiPath">
+                <el-input v-model="apiForm.apiPath" placeholder="请输入接口路径，如：POST /api/user/login"></el-input>
+              </el-form-item>
+              
+              <el-form-item label="接口描述">
+                <el-input 
+                  type="textarea" 
+                  :rows="3" 
+                  v-model="apiForm.apiDesc" 
+                  placeholder="请输入接口描述（可选）">
+                </el-input>
+              </el-form-item>
+              
+              <!-- 请求体 -->
+              <el-form-item label="接口请求体">
+                <el-input 
+                  type="textarea" 
+                  :rows="8" 
+                  v-model="apiForm.apiRequest" 
+                  placeholder="请输入接口请求体JSON格式（可选）&#10;示例：&#10;{&#10;  &quot;username&quot;: &quot;string&quot;,&#10;  &quot;password&quot;: &quot;string&quot;&#10;}">
+                </el-input>
+              </el-form-item>
+              
+              <!-- 响应体 -->
+              <el-form-item label="接口响应体">
+                <el-input 
+                  type="textarea" 
+                  :rows="8" 
+                  v-model="apiForm.apiResponse" 
+                  placeholder="请输入接口响应体JSON格式（可选）&#10;示例：&#10;{&#10;  &quot;code&quot;: 200,&#10;  &quot;message&quot;: &quot;成功&quot;,&#10;  &quot;data&quot;: {&#10;    &quot;userId&quot;: 1,&#10;    &quot;token&quot;: &quot;...&quot;&#10;  }&#10;}">
+                </el-input>
+              </el-form-item>
+              
+              <!-- SQL列表 -->
+              <el-form-item label="数据库表SQL" prop="apiSqlList">
+                <div class="sql-list-container">
+                  <div v-for="(sql, index) in apiForm.apiSqlList" :key="index" class="sql-item">
+                    <div class="sql-item-header">
+                      <span>SQL {{ index + 1 }}</span>
+                      <el-button 
+                        @click="removeSql(index)" 
+                        type="text" 
+                        icon="el-icon-delete" 
+                        size="mini"
+                        :disabled="apiForm.apiSqlList.length === 1">
+                        删除
+                      </el-button>
+                    </div>
+                    <el-input 
+                      type="textarea" 
+                      :rows="6" 
+                      v-model="apiForm.apiSqlList[index]" 
+                      :placeholder="`请输入第${index + 1}个SQL语句（CREATE TABLE或INSERT语句）`">
+                    </el-input>
                   </div>
-                  <div class="message-content">
-                    <i class="el-icon-loading"></i> 正在生成回复...
-                  </div>
+                  <el-button @click="addSql" type="dashed" icon="el-icon-plus" class="add-sql-btn">
+                    添加SQL语句
+                  </el-button>
                 </div>
-              </div>
-            </div>
-            
-            <!-- 输入区域 -->
-            <div class="input-area">
-              <el-input
-                type="textarea"
-                :rows="4"
-                placeholder="请输入您的问题或需求..."
-                v-model="currentMessage"
-                @keydown.ctrl.enter.native="sendMessage"
-                :disabled="isGenerating">
-              </el-input>
-              <div class="input-actions">
-                <span class="shortcut-tip">Ctrl + Enter 发送</span>
+              </el-form-item>
+              
+              <!-- 操作按钮 -->
+              <el-form-item>
                 <el-button 
                   type="primary" 
-                  @click="sendMessage" 
+                  @click="generatePrompt" 
                   :loading="isGenerating"
-                  :disabled="!currentMessage.trim()">
-                  {{ isGenerating ? '生成中...' : '发送' }}
+                  :disabled="!canGenerate">
+                  {{ isGenerating ? 'AI解读生成中...' : '生成Prompt' }}
                 </el-button>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
-        
-        <el-col :span="8">
-          <el-card class="sidebar-card">
-            <div slot="header">
-              <span>快速模板</span>
-            </div>
-            <div class="template-list">
-              <el-button 
-                v-for="template in promptTemplates" 
-                :key="template.id"
-                @click="useTemplate(template.content)"
-                type="text"
-                class="template-button">
-                {{ template.name }}
-              </el-button>
-            </div>
+                <el-button @click="resetForm">重置</el-button>
+              </el-form-item>
+            </el-form>
           </el-card>
           
-          <el-card class="sidebar-card" style="margin-top: 20px;">
+
+          <!-- 发表Prompt面板 -->
+          <el-container v-if="generatedPrompt" class="publish-container" style="margin-top: 20px;">
+            <el-header class="publish-header">
+              <el-select v-model="publishForm.cid" placeholder="请选择Prompt专题" style="width: 150px;">
+                <el-option
+                  v-for="item in categories"
+                  :key="item.id"
+                  :label="item.cateName"
+                  :value="item.id">
+                </el-option>
+              </el-select>
+              <el-input
+                v-model="publishForm.title"
+                :placeholder="autoTitle || '请输入标题...'"
+                style="width: 400px;margin-left: 10px"
+                @focus="autoFillTitle">
+              </el-input>
+              <el-tag
+                v-for="tag in publishForm.dynamicTags"
+                :key="tag"
+                closable
+                :disable-transitions="false"
+                @close="handleCloseTag(tag)"
+                style="margin-left: 10px">
+                {{tag}}
+              </el-tag>
+              <el-input
+                class="input-new-tag"
+                v-if="tagInputVisible"
+                v-model="tagValue"
+                ref="saveTagInput"
+                size="small"
+                @keyup.enter.native="handleInputConfirm"
+                @blur="handleInputConfirm">
+              </el-input>
+              <el-button v-else class="button-new-tag" size="small" @click="showTagInput">+ 标签</el-button>
+            </el-header>
+            <el-main class="publish-main">
+              <div id="publish-editor">
+                <mavon-editor
+                  style="height: 100%;width: 100%;"
+                  ref="publishMd"
+                  @imgAdd="imgAdd"
+                  @imgDel="imgDel"
+                  v-model="markdownContent">
+                </mavon-editor>
+              </div>
+              <div style="display: flex;align-items: center;margin-top: 15px;justify-content: flex-end">
+                <el-button type="primary" @click="publishPromptDirectly">发表Prompt</el-button>
+                <el-button @click="saveAsDraft" style="margin-left: 10px;">保存到草稿箱</el-button>
+              </div>
+            </el-main>
+          </el-container>
+        </el-col>
+
+        <!-- 右侧边栏 -->
+        <el-col :span="8">
+          <!-- 项目信息 -->
+          <el-card class="sidebar-card">
             <div slot="header">
               <span>项目信息</span>
             </div>
@@ -148,6 +220,45 @@
               <p><strong>拥有者:</strong> {{ selectedProject.ownerNickname }}</p>
             </div>
           </el-card>
+          
+          <!-- 历史记录 -->
+          <el-card class="sidebar-card" style="margin-top: 20px;">
+            <div slot="header">
+              <span>历史记录</span>
+              <el-button @click="loadPromptLogs" type="text" icon="el-icon-refresh" size="mini">刷新</el-button>
+            </div>
+            <div class="history-list" v-loading="historyLoading">
+              <div 
+                v-for="log in promptLogs" 
+                :key="log.id" 
+                class="history-item"
+                @click="viewHistoryDetail(log)">
+                <div class="history-title">{{ log.apiName }}</div>
+                <div class="history-path">{{ log.apiPath }}</div>
+                <div class="history-time">{{ formatTime(log.createTime) }}</div>
+              </div>
+              <div v-if="promptLogs.length === 0" class="no-history">
+                暂无历史记录
+              </div>
+            </div>
+          </el-card>
+          
+          <!-- 快速模板 -->
+          <el-card class="sidebar-card" style="margin-top: 20px;">
+            <div slot="header">
+              <span>快速模板</span>
+            </div>
+            <div class="template-list">
+              <el-button 
+                v-for="template in apiTemplates" 
+                :key="template.id"
+                @click="useTemplate(template)"
+                type="text"
+                class="template-button">
+                {{ template.name }}
+              </el-button>
+            </div>
+          </el-card>
         </el-col>
       </el-row>
     </div>
@@ -155,51 +266,140 @@
 </template>
 
 <script>
-import { getRequest, postJsonRequest } from '../utils/api'
+import { getRequest, generatePrompt, getUserPromptLogs, getPromptLogDetail, uploadFileRequest, postRequest } from '../utils/api'
+// Local Registration
+import { mavonEditor } from 'mavon-editor'
+// 可以通过 mavonEditor.markdownIt 获取解析器markdown-it对象
+import 'mavon-editor/dist/css/index.css'
 
 export default {
   name: 'PromptGenerator',
+  components: {
+    mavonEditor
+  },
   data() {
     return {
       loading: false,
       isGenerating: false,
+      historyLoading: false,
       searchKeyword: '',
       selectedProject: null,
       allProjects: [],
       filteredProjects: [],
-      messages: [],
-      currentMessage: '',
-      promptTemplates: [
+      generatedPrompt: '',
+      promptLogs: [],
+      markdownContent: '',
+
+      // 发表相关数据
+      categories: [],
+      publishForm: {
+        id: '-1',
+        title: '',
+        cid: '',
+        dynamicTags: []
+      },
+      tagInputVisible: false,
+      tagValue: '',
+      
+      // 表单数据
+      apiForm: {
+        apiName: '',
+        apiPath: '',
+        apiDesc: '',
+        apiRequest: '',
+        apiResponse: '',
+        apiSqlList: ['']
+      },
+      
+      // 表单验证规则
+      formRules: {
+        apiName: [
+          { required: true, message: '请输入接口名称', trigger: 'blur' }
+        ],
+        apiPath: [
+          { required: true, message: '请输入接口路径', trigger: 'blur' }
+        ],
+        apiSqlList: [
+          { 
+            validator: this.validateSqlList, 
+            trigger: 'blur' 
+          }
+        ]
+      },
+      
+      // 快速模板
+      apiTemplates: [
         {
           id: 1,
-          name: '代码生成',
-          content: '请帮我生成一个用于[具体功能]的代码，使用[编程语言]，要求[具体要求]。'
+          name: '用户登录接口',
+          data: {
+            apiName: '用户登录接口',
+            apiPath: 'POST /api/user/login',
+            apiDesc: '用户通过用户名和密码进行登录验证',
+            apiRequest: '{\n  "username": "string",\n  "password": "string"\n}',
+            apiResponse: '{\n  "code": 200,\n  "message": "登录成功",\n  "data": {\n    "userId": 1,\n    "username": "admin",\n    "nickname": "管理员",\n    "token": "eyJhbGciOiJIUzI1NiJ9..."\n  }\n}',
+            apiSqlList: ['CREATE TABLE `user` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `username` varchar(50) NOT NULL,\n  `password` varchar(255) NOT NULL,\n  `nickname` varchar(50) DEFAULT NULL,\n  `status` int DEFAULT \'1\',\n  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;']
+          }
         },
         {
           id: 2,
-          name: '文档编写',
-          content: '请帮我编写关于[主题]的技术文档，包括[具体内容要求]。'
+          name: '用户注册接口',
+          data: {
+            apiName: '用户注册接口',
+            apiPath: 'POST /api/user/register',
+            apiDesc: '新用户注册账号',
+            apiRequest: '{\n  "username": "string",\n  "password": "string",\n  "email": "string",\n  "nickname": "string"\n}',
+            apiResponse: '{\n  "code": 200,\n  "message": "注册成功",\n  "data": {\n    "userId": 1\n  }\n}',
+            apiSqlList: ['CREATE TABLE `user` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `username` varchar(50) NOT NULL UNIQUE,\n  `password` varchar(255) NOT NULL,\n  `email` varchar(100) DEFAULT NULL,\n  `nickname` varchar(50) DEFAULT NULL,\n  `status` int DEFAULT \'1\',\n  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;']
+          }
         },
         {
           id: 3,
-          name: '问题解答',
-          content: '我遇到了一个关于[技术领域]的问题：[具体问题描述]，请帮我分析并提供解决方案。'
-        },
-        {
-          id: 4,
-          name: '代码优化',
-          content: '请帮我优化以下代码，提高其性能和可读性：\n[粘贴代码]'
-        },
-        {
-          id: 5,
-          name: '学习指导',
-          content: '我想学习[技术/概念]，请为我制定一个学习计划和推荐相关资源。'
+          name: '商品列表接口',
+          data: {
+            apiName: '商品列表接口',
+            apiPath: 'GET /api/product/list',
+            apiDesc: '获取商品列表，支持分页和筛选',
+            apiRequest: '{\n  "page": 1,\n  "size": 10,\n  "category": "string",\n  "keyword": "string"\n}',
+            apiResponse: '{\n  "code": 200,\n  "message": "成功",\n  "data": {\n    "list": [{\n      "id": 1,\n      "name": "商品名称",\n      "price": 99.99,\n      "categoryName": "分类名称"\n    }],\n    "total": 100\n  }\n}',
+            apiSqlList: [
+              'CREATE TABLE `product` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  `price` decimal(10,2) NOT NULL,\n  `category_id` bigint NOT NULL,\n  `status` int DEFAULT \'1\',\n  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;',
+              'CREATE TABLE `category` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `name` varchar(100) NOT NULL,\n  `status` int DEFAULT \'1\',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;'
+            ]
+          }
         }
       ]
     }
   },
+  computed: {
+    canGenerate() {
+      return this.apiForm.apiName && this.apiForm.apiPath &&
+             this.apiForm.apiSqlList.length > 0 &&
+             this.apiForm.apiSqlList.some(sql => sql.trim() !== '')
+    },
+
+    renderedMarkdown() {
+      if (this.$refs.publishMd && this.markdownContent) {
+        return this.$refs.publishMd.d_render
+      }
+      return ''
+    },
+
+    autoTitle() {
+      return this.apiForm.apiName ? `${this.apiForm.apiName} - Prompt` : ''
+    }
+  },
+  watch: {
+    'apiForm.apiName'(newVal) {
+      // 当接口名称改变时，如果标题还没有被手动设置，自动更新标题
+      if (newVal && !this.publishForm.title) {
+        this.publishForm.title = `${newVal} - Prompt`
+      }
+    }
+  },
   mounted() {
     this.loadProjects()
+    this.getCategories()
   },
   methods: {
     async loadProjects() {
@@ -236,112 +436,364 @@ export default {
         return
       }
       this.selectedProject = project
-      this.messages = []
-      this.currentMessage = ''
+      this.resetForm()
+      this.loadPromptLogs()
     },
     
     backToSelection() {
       this.selectedProject = null
-      this.messages = []
-      this.currentMessage = ''
+      this.resetForm()
+      this.generatedPrompt = ''
+      this.markdownContent = ''
+      this.resetPublishForm()
+      this.promptLogs = []
     },
     
-    useTemplate(template) {
-      this.currentMessage = template
+    // 表单相关方法
+    resetForm() {
+      this.apiForm = {
+        apiName: '',
+        apiPath: '',
+        apiDesc: '',
+        apiRequest: '',
+        apiResponse: '',
+        apiSqlList: ['']
+      }
+      this.generatedPrompt = ''
+      this.markdownContent = ''
+      this.resetPublishForm()
+      if (this.$refs.apiForm) {
+        this.$refs.apiForm.clearValidate()
+      }
     },
     
-    async sendMessage() {
-      if (!this.currentMessage.trim() || this.isGenerating) {
+    addSql() {
+      this.apiForm.apiSqlList.push('')
+    },
+    
+    removeSql(index) {
+      if (this.apiForm.apiSqlList.length > 1) {
+        this.apiForm.apiSqlList.splice(index, 1)
+      }
+    },
+    
+    validateSqlList(rule, value, callback) {
+      if (!value || value.length === 0) {
+        callback(new Error('请至少添加一个SQL语句'))
         return
       }
       
-      const userMessage = {
-        role: 'user',
-        content: this.currentMessage.trim(),
-        timestamp: new Date()
+      const hasValidSql = value.some(sql => sql && sql.trim() !== '')
+      if (!hasValidSql) {
+        callback(new Error('请输入有效的SQL语句'))
+        return
       }
       
-      this.messages.push(userMessage)
-      const messageToSend = this.currentMessage.trim()
-      this.currentMessage = ''
-      this.isGenerating = true
-      
-      // 滚动到底部
-      this.$nextTick(() => {
-        this.scrollToBottom()
-      })
-      
-      try {
-        const response = await postJsonRequest('/llm/chat', {
-          apiKey: this.selectedProject.apiKey,
-          apiUrl: this.selectedProject.apiUrl,
-          modelName: this.selectedProject.modelName,
-          message: messageToSend
-        })
+      callback()
+    },
+    
+    useTemplate(template) {
+      this.apiForm = { ...template.data }
+      this.$message.success('模板已应用')
+    },
+    
+    async generatePrompt() {
+      // 表单验证
+      this.$refs.apiForm.validate(async (valid) => {
+        if (!valid) {
+          this.$message.error('请完善表单信息')
+          return
+        }
         
-        if (response.data.status === 'success') {
-          const assistantMessage = {
-            role: 'assistant',
-            content: response.data.obj,
-            timestamp: new Date()
+        this.isGenerating = true
+        try {
+          const requestData = {
+            projectId: this.selectedProject.id,
+            apiName: this.apiForm.apiName,
+            apiPath: this.apiForm.apiPath,
+            apiDesc: this.apiForm.apiDesc || null,
+            apiRequest: this.apiForm.apiRequest || null,
+            apiResponse: this.apiForm.apiResponse || null,
+            apiSqlList: this.apiForm.apiSqlList.filter(sql => sql.trim() !== '')
           }
-          this.messages.push(assistantMessage)
-        } else {
-          this.$message.error('AI调用失败：' + response.data.msg)
-          // 添加错误消息
-          const errorMessage = {
-            role: 'assistant',
-            content: '抱歉，AI调用失败：' + response.data.msg,
-            timestamp: new Date(),
-            isError: true
+          
+          const response = await generatePrompt(requestData)
+          
+          if (response.data.status === 'success') {
+            this.generatedPrompt = response.data.obj
+            this.markdownContent = response.data.obj // 设置markdown内容
+            // 自动填充标题
+            this.autoFillTitle()
+            this.$message.success('Prompt生成成功！')
+            this.loadPromptLogs() // 刷新历史记录
+          } else {
+            this.$message.error('生成失败：' + response.data.msg)
           }
-          this.messages.push(errorMessage)
+        } catch (error) {
+          this.$message.error('生成失败：' + error.message)
+        } finally {
+          this.isGenerating = false
         }
-      } catch (error) {
-        this.$message.error('网络请求失败：' + error.message)
-        const errorMessage = {
-          role: 'assistant',
-          content: '抱歉，网络请求失败：' + error.message,
-          timestamp: new Date(),
-          isError: true
-        }
-        this.messages.push(errorMessage)
-      } finally {
-        this.isGenerating = false
-        this.$nextTick(() => {
-          this.scrollToBottom()
-        })
-      }
-    },
-    
-    clearChat() {
-      this.$confirm('确定要清空所有对话记录吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.messages = []
-        this.$message.success('对话记录已清空')
       })
     },
     
-    copyMessage(content) {
+    copyPrompt() {
       const textarea = document.createElement('textarea')
-      textarea.value = content
+      textarea.value = this.generatedPrompt
       document.body.appendChild(textarea)
       textarea.select()
       document.execCommand('copy')
       document.body.removeChild(textarea)
-      this.$message.success('内容已复制到剪贴板')
+      this.$message.success('Prompt已复制到剪贴板')
     },
     
-    formatMessage(content) {
-      // 简单的格式化，将换行符转换为<br>
-      return content.replace(/\n/g, '<br>')
+    downloadPrompt() {
+      const element = document.createElement('a')
+      const file = new Blob([this.generatedPrompt], { type: 'text/plain' })
+      element.href = URL.createObjectURL(file)
+      element.download = `${this.apiForm.apiName}_prompt.md`
+      document.body.appendChild(element)
+      element.click()
+      document.body.removeChild(element)
+      this.$message.success('Prompt已下载')
+    },
+    
+    // 历史记录相关方法
+    async loadPromptLogs() {
+      if (!this.selectedProject) return
+      
+      this.historyLoading = true
+      try {
+        const response = await getUserPromptLogs()
+        if (response.data.status === 'success') {
+          // 过滤当前项目的记录
+          this.promptLogs = (response.data.obj || []).filter(log => 
+            log.projectId === this.selectedProject.id
+          ).slice(0, 10) // 只显示最近10条
+        } else {
+          console.error('加载历史记录失败：', response.data.msg)
+        }
+      } catch (error) {
+        console.error('加载历史记录失败：', error.message)
+      } finally {
+        this.historyLoading = false
+      }
+    },
+    
+    async viewHistoryDetail(log) {
+      try {
+        const response = await getPromptLogDetail(log.id)
+        if (response.data.status === 'success') {
+          const detail = response.data.obj
+          
+          // 填充表单
+          this.apiForm = {
+            apiName: detail.apiName || '',
+            apiPath: detail.apiPath || '',
+            apiDesc: detail.apiDesc || '',
+            apiRequest: detail.apiRequest || '',
+            apiResponse: detail.apiResponse || '',
+            apiSqlList: detail.apiSql ? JSON.parse(detail.apiSql) : ['']
+          }
+          
+          // 显示生成的结果
+          this.generatedPrompt = detail.finalPrompt || ''
+          this.markdownContent = detail.finalPrompt || '' // 设置markdown内容
+
+          this.$message.success('历史记录已加载')
+        } else {
+          this.$message.error('加载详情失败：' + response.data.msg)
+        }
+      } catch (error) {
+        this.$message.error('加载详情失败：' + error.message)
+      }
     },
     
     formatTime(timestamp) {
-      return new Date(timestamp).toLocaleTimeString()
+      if (!timestamp) return ''
+      const date = new Date(timestamp)
+      return date.toLocaleString('zh-CN', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    },
+
+    // 图片上传相关方法
+    imgAdd(pos, $file) {
+      var _this = this
+      // 第一步.将图片上传到服务器.
+      var formdata = new FormData()
+      formdata.append('image', $file)
+      uploadFileRequest("/article/uploadimg", formdata).then(resp => {
+        var json = resp.data
+        if (json.status == 'success') {
+          _this.$refs.md.$imglst2Url([[pos, json.msg]])
+        } else {
+          _this.$message({type: json.status, message: json.msg})
+        }
+      })
+    },
+
+    imgDel(pos) {
+      // 处理图片删除逻辑
+    },
+
+    getCategories() {
+      let _this = this
+      getRequest("/admin/category/all").then(resp => {
+        _this.categories = resp.data
+      })
+    },
+
+    // 标签管理方法
+    handleCloseTag(tag) {
+      this.publishForm.dynamicTags.splice(this.publishForm.dynamicTags.indexOf(tag), 1)
+    },
+
+    showTagInput() {
+      this.tagInputVisible = true
+      this.$nextTick(_ => {
+        this.$refs.saveTagInput.$refs.input.focus()
+      })
+    },
+
+    handleInputConfirm() {
+      let tagValue = this.tagValue
+      if (tagValue) {
+        this.publishForm.dynamicTags.push(tagValue)
+      }
+      this.tagInputVisible = false
+      this.tagValue = ''
+    },
+
+    // 发表Prompt方法
+    publishPromptDirectly() {
+      if (!this.validatePublishForm()) {
+        return
+      }
+
+      this.loading = true
+      const htmlContent = this.$refs.publishMd.d_render
+
+      postRequest("/article/", {
+        id: this.publishForm.id,
+        title: this.publishForm.title,
+        mdContent: this.markdownContent,
+        htmlContent: htmlContent,
+        cid: this.publishForm.cid,
+        state: 1, // 1表示发表
+        dynamicTags: this.publishForm.dynamicTags
+      }).then(resp => {
+        this.loading = false
+        if (resp.status == 200 && resp.data.status == 'success') {
+          this.$message({
+            type: 'success',
+            message: 'Prompt发表成功!'
+          })
+          // 重置发表表单
+          this.resetPublishForm()
+          // 刷新文章列表（如果有的话）
+          window.bus && window.bus.$emit('blogTableReload')
+        } else {
+          this.$message({
+            type: 'error',
+            message: '发表失败: ' + (resp.data.msg || '未知错误')
+          })
+        }
+      }).catch(error => {
+        this.loading = false
+        this.$message({
+          type: 'error',
+          message: '发表失败: ' + error.message
+        })
+      })
+    },
+
+    saveAsDraft() {
+      if (!this.validatePublishForm()) {
+        return
+      }
+
+      this.loading = true
+      const htmlContent = this.$refs.publishMd.d_render
+
+      postRequest("/article/", {
+        id: this.publishForm.id,
+        title: this.publishForm.title,
+        mdContent: this.markdownContent,
+        htmlContent: htmlContent,
+        cid: this.publishForm.cid,
+        state: 0, // 0表示保存到草稿箱
+        dynamicTags: this.publishForm.dynamicTags
+      }).then(resp => {
+        this.loading = false
+        if (resp.status == 200 && resp.data.status == 'success') {
+          this.$message({
+            type: 'success',
+            message: '保存到草稿箱成功!'
+          })
+          // 重置发表表单
+          this.resetPublishForm()
+        } else {
+          this.$message({
+            type: 'error',
+            message: '保存失败: ' + (resp.data.msg || '未知错误')
+          })
+        }
+      }).catch(error => {
+        this.loading = false
+        this.$message({
+          type: 'error',
+          message: '保存失败: ' + error.message
+        })
+      })
+    },
+
+    validatePublishForm() {
+      if (!this.publishForm.title) {
+        this.$message({type: 'error', message: '请输入标题!'})
+        return false
+      }
+      if (!this.publishForm.cid) {
+        this.$message({type: 'error', message: '请选择专题!'})
+        return false
+      }
+      if (!this.markdownContent) {
+        this.$message({type: 'error', message: '内容不能为空!'})
+        return false
+      }
+      return true
+    },
+
+    resetPublishForm() {
+      this.publishForm = {
+        id: '-1',
+        title: '',
+        cid: '',
+        dynamicTags: []
+      }
+      this.tagValue = ''
+      this.tagInputVisible = false
+    },
+
+    autoFillTitle() {
+      if (!this.publishForm.title && this.apiForm.apiName) {
+        this.publishForm.title = this.apiForm.apiName + ' - Prompt'
+      }
+    },
+
+    publishPrompt() {
+      // 自动填充标题
+      this.autoFillTitle()
+      // 滚动到发表面板
+      this.$nextTick(() => {
+        const publishContainer = document.querySelector('.publish-container')
+        if (publishContainer) {
+          publishContainer.scrollIntoView({ behavior: 'smooth' })
+        }
+      })
     },
     
     getDisplayUrl(url) {
@@ -350,13 +802,6 @@ export default {
         return urlObj.hostname
       } catch (error) {
         return url
-      }
-    },
-    
-    scrollToBottom() {
-      const messageList = this.$refs.messageList
-      if (messageList) {
-        messageList.scrollTop = messageList.scrollHeight
       }
     }
   }
@@ -441,10 +886,9 @@ export default {
   color: #909399;
 }
 
-.chat-card {
-  height: 600px;
-  display: flex;
-  flex-direction: column;
+/* 表单相关样式 */
+.form-card {
+  min-height: 600px;
 }
 
 .card-header {
@@ -453,104 +897,103 @@ export default {
   align-items: center;
 }
 
-.message-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px 0;
-  max-height: 400px;
+.sql-list-container {
+  border: 1px solid #DCDFE6;
+  border-radius: 4px;
+  padding: 15px;
+  background-color: #FAFAFA;
 }
 
-.message-item {
+.sql-item {
   margin-bottom: 15px;
 }
 
-.message {
-  padding: 12px 15px;
-  border-radius: 8px;
-  max-width: 80%;
+.sql-item:last-child {
+  margin-bottom: 0;
 }
 
-.message.user {
-  background-color: #409EFF;
-  color: white;
-  margin-left: auto;
-}
-
-.message.assistant {
-  background-color: #F5F7FA;
-  color: #303133;
-  margin-right: auto;
-}
-
-.message.assistant.loading {
-  background-color: #E6F7FF;
-}
-
-.message-header {
+.sql-item-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 5px;
-  font-size: 12px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #606266;
 }
 
-.role-label {
-  font-weight: bold;
-}
-
-.timestamp {
-  opacity: 0.7;
-}
-
-.message-content {
-  line-height: 1.5;
-  word-wrap: break-word;
-}
-
-.message-actions {
-  margin-top: 8px;
-  text-align: right;
-}
-
-.input-area {
-  border-top: 1px solid #EBEEF5;
-  padding-top: 15px;
-}
-
-.input-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.add-sql-btn {
+  width: 100%;
   margin-top: 10px;
+  border-style: dashed;
+  color: #409EFF;
+  background-color: #FAFBFC;
 }
 
-.shortcut-tip {
-  font-size: 12px;
-  color: #909399;
-}
-
-.sidebar-card {
-  margin-bottom: 20px;
-}
-
-.template-list {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.template-button {
-  text-align: left;
-  padding: 8px 12px;
-  border: 1px solid #EBEEF5;
-  border-radius: 4px;
-  background-color: #FAFAFA;
-  transition: all 0.3s;
-}
-
-.template-button:hover {
+.add-sql-btn:hover {
   background-color: #F0F9FF;
   border-color: #409EFF;
+}
+
+#prompt-editor {
+  width: 100%;
+  height: 400px;
+}
+
+/* 发表面板样式 */
+.publish-container {
+  border: 1px solid #E4E7ED;
+  border-radius: 4px;
+  background-color: #ececec;
+  min-height: 500px;
+}
+
+.publish-header {
+  background-color: #ececec;
+  margin-top: 10px;
+  padding-left: 5px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  border-bottom: 1px solid #E4E7ED;
+}
+
+.publish-main {
+  display: flex;
+  flex-direction: column;
+  padding-left: 5px;
+  background-color: #ececec;
+  padding-top: 0px;
+}
+
+.publish-header > .el-tag + .el-tag {
+  margin-left: 10px;
+}
+
+.publish-header > .button-new-tag {
+  margin-left: 10px;
+  height: 32px;
+  line-height: 30px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.publish-header > .input-new-tag {
+  width: 90px;
+  margin-left: 10px;
+  vertical-align: bottom;
+}
+
+#publish-editor {
+  width: 100%;
+  height: 450px;
+  text-align: left;
+}
+
+
+/* 侧边栏样式 */
+.sidebar-card {
+  margin-bottom: 20px;
 }
 
 .project-details p {
@@ -561,5 +1004,105 @@ export default {
 
 .project-details strong {
   color: #303133;
+}
+
+/* 历史记录样式 */
+.history-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.history-item {
+  padding: 12px;
+  border: 1px solid #E4E7ED;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background-color: #FAFAFA;
+}
+
+.history-item:hover {
+  background-color: #F0F9FF;
+  border-color: #409EFF;
+  transform: translateX(2px);
+}
+
+.history-item:last-child {
+  margin-bottom: 0;
+}
+
+.history-title {
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 4px;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-path {
+  color: #909399;
+  font-size: 12px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-time {
+  color: #C0C4CC;
+  font-size: 11px;
+}
+
+.no-history {
+  text-align: center;
+  color: #909399;
+  padding: 20px;
+  font-size: 13px;
+}
+
+/* 模板列表样式 */
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.template-button {
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid #EBEEF5;
+  border-radius: 4px;
+  background-color: #FAFAFA;
+  transition: all 0.3s;
+  font-size: 13px;
+}
+
+.template-button:hover {
+  background-color: #F0F9FF;
+  border-color: #409EFF;
+  color: #409EFF;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .prompt-generator {
+    padding: 10px;
+  }
+  
+  .form-card {
+    min-height: auto;
+  }
+  
+  .prompt-content {
+    font-size: 12px;
+    max-height: 300px;
+  }
+  
+  .history-list {
+    max-height: 200px;
+  }
 }
 </style>

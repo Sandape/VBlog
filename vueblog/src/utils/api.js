@@ -129,3 +129,24 @@ export const markAllNotificationsAsRead = () => {
 export const deleteNotification = (id) => {
   return deleteRequest(`/notification/${id}`)
 }
+
+// Prompt生成器相关API
+export const generatePrompt = (data) => {
+  return postJsonRequest('/prompt/generate', data)
+}
+
+export const getUserPromptLogs = () => {
+  return getRequest('/prompt/logs/my')
+}
+
+export const getProjectPromptLogs = (projectId) => {
+  return getRequest(`/prompt/logs/project/${projectId}`)
+}
+
+export const getPromptLogDetail = (id) => {
+  return getRequest(`/prompt/logs/${id}`)
+}
+
+export const deletePromptLog = (id) => {
+  return deleteRequest(`/prompt/logs/${id}`)
+}

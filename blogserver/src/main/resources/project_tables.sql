@@ -10,7 +10,6 @@ CREATE TABLE `project` (
   `example_mapper_path` varchar(500) COMMENT '示例Mapper类路径',
   `example_entity_path` varchar(500) COMMENT '示例实体类路径',
   `example_interface_path` varchar(500) COMMENT '示例接口路径',
-  `sql_list` json COMMENT 'SQL表元列表，JSON格式：{"table_name": "sql_content"}',
   `owner_id` bigint(20) NOT NULL COMMENT '项目拥有者ID',
   `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

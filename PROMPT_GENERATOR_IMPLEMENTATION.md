@@ -210,3 +210,4 @@ curl -X POST http://localhost:8080/llm/chat \
 - ✅ 详细的使用文档
 
 该功能已经可以投入使用，为用户提供基于项目配置的智能AI对话服务。
+
