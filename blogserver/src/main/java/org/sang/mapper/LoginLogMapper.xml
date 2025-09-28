@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.sang.mapper.LoginLogMapper">
+    
+    <insert id="addLoginLog" parameterType="org.sang.bean.LoginLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO login_log (user_id, username, nickname, ip_address, login_status, login_time)
+        VALUES (#{userId}, #{username}, #{nickname}, #{ipAddress}, #{loginStatus}, #{loginTime})
+    </insert>
+    
+    <update id="updateLogoutTime">
+        UPDATE login_log SET logout_time = #{logoutTime}, session_duration = TIMESTAMPDIFF(SECOND, login_time, #{logoutTime})
+        WHERE id = #{id}
+    </update>
+    
+    <select id="getLoginStatistics" resultType="java.util.Map">
+        SELECT DATE(login_time) as loginDate, COUNT(*) as loginCount
+        FROM login_log 
+        WHERE user_id = #{uid} AND login_status = 'SUCCESS'
+        AND login_time >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        GROUP BY DATE(login_time)
+        ORDER BY loginDate
+    </select>
+    
+    <select id="getLoginCounts" resultType="int">
+        SELECT COALESCE(COUNT(*), 0) as loginCount
+        FROM login_log 
+        WHERE user_id = #{uid} AND login_status = 'SUCCESS'
+        AND login_time >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        GROUP BY DATE(login_time)
+        ORDER BY DATE(login_time)
+    </select>
+    
+    <select id="getLoginDates" resultType="string">
+        SELECT DISTINCT DATE(login_time) as loginDate
+        FROM login_log 
+        WHERE user_id = #{uid} AND login_status = 'SUCCESS'
+        AND login_time >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        ORDER BY loginDate
+    </select>
+    
+    <select id="getLoginLogs" resultType="org.sang.bean.LoginLog">
+        SELECT 
+            id,
+            user_id as userId, 
+            username, 
+            nickname, 
+            ip_address as ipAddress, 
+            login_status as loginStatus, 
+            login_time as loginTime
+        FROM login_log 
+        WHERE user_id = #{uid}
+        ORDER BY login_time DESC
+        LIMIT #{start}, #{count}
+    </select>
+    
+    <select id="getLoginLogCount" resultType="int">
+        SELECT COUNT(*) FROM login_log WHERE user_id = #{uid}
+    </select>
+    
+    <select id="getAllLoginLogs" resultType="org.sang.bean.LoginLog">
+        SELECT 
+            id,
+            user_id as userId, 
+            username, 
+            nickname, 
+            ip_address as ipAddress, 
+            login_status as loginStatus, 
+            login_time as loginTime
+        FROM login_log 
+        ORDER BY login_time DESC
+        LIMIT #{start}, #{count}
+    </select>
+    
+    <select id="getAllLoginLogCount" resultType="int">
+        SELECT COUNT(*) FROM login_log
+    </select>
+    
+    <select id="getUsernames" resultType="string">
+        SELECT DISTINCT username FROM login_log ORDER BY username
+    </select>
+    
+    <select id="getLoginCountsByUser" resultType="int">
+        SELECT COUNT(*) as loginCount
+        FROM login_log 
+        WHERE login_status = 'SUCCESS'
+        GROUP BY username
+        ORDER BY username
+    </select>
+    
+    <select id="searchLoginLogsByUsername" resultType="org.sang.bean.LoginLog">
+        SELECT 
+            id,
+            user_id as userId, 
+            username, 
+            nickname, 
+            ip_address as ipAddress, 
+            login_status as loginStatus, 
+            login_time as loginTime
+        FROM login_log 
+        WHERE username LIKE CONCAT('%', #{username}, '%')
+        ORDER BY login_time DESC
+        LIMIT #{start}, #{count}
+    </select>
+    
+    <select id="getLoginLogCountByUsername" resultType="int">
+        SELECT COUNT(*) FROM login_log WHERE username LIKE CONCAT('%', #{username}, '%')
+    </select>
+    
+</mapper>

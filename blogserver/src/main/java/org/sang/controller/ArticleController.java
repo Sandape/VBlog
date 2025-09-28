@@ -15,6 +15,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import org.sang.bean.LoginLog;
+import org.sang.service.LoginLogService;
 
 /**
  * Created by sang on 2017/12/20.
@@ -27,6 +29,9 @@ public class ArticleController {
 
     @Autowired
     ArticleService articleService;
+
+    @Autowired
+    LoginLogService loginLogService;
 
     @RequestMapping(value = "/", method = RequestMethod.POST)
     public RespBean addNewArticle(Article article) {
@@ -122,13 +127,68 @@ public class ArticleController {
         return new RespBean("error", "还原失败!");
     }
 
+    /**
+     * 获取登录日志列表
+     */
+    @RequestMapping(value = "/loginLogs", method = RequestMethod.GET)
+    public Map<String, Object> getLoginLogs(@RequestParam(value = "page", defaultValue = "1") Integer page, 
+                                       @RequestParam(value = "count", defaultValue = "10") Integer count) {
+        // 不按用户ID过滤，显示所有登录记录
+        List<LoginLog> loginLogs = loginLogService.getAllLoginLogs(page, count);
+        int totalCount = loginLogService.getAllLoginLogCount();
+        
+        System.out.println("查询到的登录日志数量: " + loginLogs.size());
+        System.out.println("总数量: " + totalCount);
+        
+        Map<String, Object> map = new HashMap<>();
+        map.put("totalCount", totalCount);
+        map.put("loginLogs", loginLogs);
+        return map;
+    }
+
+    /**
+     * 按用户统计登录次数
+     */
+    @RequestMapping(value = "/loginStatsByUser", method = RequestMethod.GET)
+    public Map<String, Object> getLoginStatsByUser() {
+        Map<String, Object> map = new HashMap<>();
+        List<String> usernames = loginLogService.getUsernames();
+        List<Integer> loginCounts = loginLogService.getLoginCountsByUser();
+        map.put("usernames", usernames);
+        map.put("loginCounts", loginCounts);
+        return map;
+    }
+
+    /**
+     * 根据用户名搜索登录记录
+     */
+    @RequestMapping(value = "/searchLoginLogs", method = RequestMethod.GET)
+    public Map<String, Object> searchLoginLogs(@RequestParam("username") String username,
+                                         @RequestParam(value = "page", defaultValue = "1") Integer page,
+                                         @RequestParam(value = "count", defaultValue = "10") Integer count) {
+        List<LoginLog> loginLogs = loginLogService.searchLoginLogsByUsername(username, page, count);
+        int totalCount = loginLogService.getLoginLogCountByUsername(username);
+        Map<String, Object> map = new HashMap<>();
+        map.put("totalCount", totalCount);
+        map.put("loginLogs", loginLogs);
+        return map;
+    }
+
     @RequestMapping("/dataStatistics")
     public Map<String,Object> dataStatistics() {
         Map<String, Object> map = new HashMap<>();
         List<String> categories = articleService.getCategories();
         List<Integer> dataStatistics = articleService.getDataStatistics();
+        
+        // 添加登录日志统计
+        Long currentUserId = Util.getCurrentUser().getId();
+        List<String> loginDates = loginLogService.getLoginDates(currentUserId);
+        List<Integer> loginCounts = loginLogService.getLoginCounts(currentUserId);
+        
         map.put("categories", categories);
         map.put("ds", dataStatistics);
+        map.put("loginDates", loginDates);
+        map.put("loginCounts", loginCounts);
         return map;
     }
 }

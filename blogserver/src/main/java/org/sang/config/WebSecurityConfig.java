@@ -21,6 +21,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import org.sang.bean.User;
+import org.sang.service.LoginLogService;
 
 /**
  * Created by sang on 2017/12/17.
@@ -29,6 +31,9 @@ import java.io.PrintWriter;
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     UserService userService;
+
+    @Autowired
+    LoginLogService loginLogService;
 
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
@@ -39,12 +44,41 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     protected void configure(HttpSecurity http) throws Exception {
         http.authorizeRequests()
                 .antMatchers("/admin/category/all").authenticated()
-                .antMatchers("/article/public/**").permitAll() // 公开访问文章浏览相关端点
-                .antMatchers("/admin/**","/reg").hasRole("超级管理员")///admin/**的URL都需要有超级管理员角色，如果使用.hasAuthority()方法来配置，需要在参数中加上ROLE_,如下.hasAuthority("ROLE_超级管理员")
-                .anyRequest().authenticated()//其他的路径都是登录后即可访问
+                .antMatchers("/article/public/**").permitAll()
+                .antMatchers("/admin/**","/reg").hasRole("超级管理员")
+                .anyRequest().authenticated()
                 .and().formLogin().loginPage("/login_page").successHandler(new AuthenticationSuccessHandler() {
             @Override
             public void onAuthenticationSuccess(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Authentication authentication) throws IOException, ServletException {
+                // 获取用户信息
+                String username = authentication.getName();
+                String ipAddress = getClientIpAddress(httpServletRequest);
+                
+                try {
+                    // 通过用户名查询用户详细信息
+                    User user = (User) userService.loadUserByUsername(username);
+                    Long userId = null;
+                    String nickname = username;
+                    
+                    if (user != null && user.getId() != null) {
+                        userId = user.getId();
+                        nickname = user.getNickname() != null ? user.getNickname() : username;
+                    }
+                    
+                    // 记录登录成功日志
+                    loginLogService.recordLoginLog(
+                        userId, 
+                        username, 
+                        nickname, 
+                        ipAddress, 
+                        "SUCCESS"
+                    );
+                    System.out.println("登录日志记录成功: " + username + ", userId: " + userId);
+                } catch (Exception e) {
+                    System.err.println("记录登录日志失败: " + e.getMessage());
+                    e.printStackTrace();
+                }
+                
                 httpServletResponse.setContentType("application/json;charset=utf-8");
                 PrintWriter out = httpServletResponse.getWriter();
                 out.write("{\"status\":\"success\",\"msg\":\"登录成功\"}");
@@ -55,6 +89,12 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .failureHandler(new AuthenticationFailureHandler() {
                     @Override
                     public void onAuthenticationFailure(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, AuthenticationException e) throws IOException, ServletException {
+                        String username = httpServletRequest.getParameter("username");
+                        String ipAddress = getClientIpAddress(httpServletRequest);
+                        
+                        // 记录登录失败日志
+                        loginLogService.recordLoginFailure(username, ipAddress, e.getMessage());
+                        
                         httpServletResponse.setContentType("application/json;charset=utf-8");
                         PrintWriter out = httpServletResponse.getWriter();
                         out.write("{\"status\":\"error\",\"msg\":\"登录失败\"}");
@@ -74,5 +114,15 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     @Bean
     AccessDeniedHandler getAccessDeniedHandler() {
         return new AuthenticationAccessDeniedHandler();
+    }
+
+    // 添加获取客户端IP的方法
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedForHeader = request.getHeader("X-Forwarded-For");
+        if (xForwardedForHeader == null) {
+            return request.getRemoteAddr();
+        } else {
+            return xForwardedForHeader.split(",")[0];
+        }
     }
 }
