@@ -13,6 +13,7 @@ import PublicArticleDetail from '@/components/PublicArticleDetail'
 import ProjectList from '@/components/ProjectList'
 import CreateProject from '@/components/CreateProject'
 import JoinProject from '@/components/JoinProject'
+import PromptGenerator from '@/components/PromptGenerator'
 
 Vue.use(Router)
 
@@ -68,6 +69,13 @@ export default new Router({
           name: '编辑博客',
           component: PostArticle,
           hidden: true,
+          meta: {
+            keepAlive: false
+          }
+        }, {
+          path: '/promptGenerator',
+          name: 'Prompt生成',
+          component: PromptGenerator,
           meta: {
             keepAlive: false
           }

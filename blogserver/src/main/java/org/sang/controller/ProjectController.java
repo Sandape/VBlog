@@ -117,6 +117,15 @@ public class ProjectController {
     }
 
     /**
+     * 获取用户所有项目列表（参与的+拥有的）
+     */
+    @GetMapping("/list")
+    public RespBean getAllUserProjects() {
+        List<Project> projects = projectService.getUserProjects();
+        return RespBean.success("获取成功", projects);
+    }
+
+    /**
      * 搜索项目
      */
     @GetMapping("/search")
