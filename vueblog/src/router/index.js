@@ -8,6 +8,8 @@ import DataCharts from '@/components/DataCharts'
 import PostArticle from '@/components/PostArticle'
 import UserMana from '@/components/UserMana'
 import BlogDetail from '@/components/BlogDetail'
+import PublicArticleList from '@/components/PublicArticleList'
+import PublicArticleDetail from '@/components/PublicArticleDetail'
 
 Vue.use(Router)
 
@@ -30,6 +32,13 @@ export default new Router({
       iconCls: 'fa fa-file-text-o',
       children: [
         {
+          path: '/publicArticleList',
+          name: '公开文章',
+          component: PublicArticleList,
+          meta: {
+            keepAlive: true
+          }
+        }, {
           path: '/articleList',
           name: '文章列表',
           component: ArticleList,
