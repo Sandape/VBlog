@@ -78,4 +78,9 @@ public interface LoginLogMapper {
      * 根据用户名获取登录记录总数
      */
     int getLoginLogCountByUsername(@Param("username") String username);
+
+    /**
+     * 获取登录统计数据（按用户分组）
+     */
+    List<Map<String, Object>> getLoginStatsByUser();
 }

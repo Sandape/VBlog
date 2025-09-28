@@ -23,6 +23,7 @@ public class PromptLog {
     // 关联字段
     private String projectName;
     private String userNickname;
+    private String username;
 
     public Long getId() {
         return id;
@@ -142,5 +143,13 @@ public class PromptLog {
 
     public void setUserNickname(String userNickname) {
         this.userNickname = userNickname;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 }

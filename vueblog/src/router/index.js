@@ -16,6 +16,10 @@ import JoinProject from '@/components/JoinProject'
 import PromptGenerator from '@/components/PromptGenerator'
 import TableMetaManagement from '@/components/TableMetaManagement'
 import TableMetaDetail from '@/components/TableMetaDetail'
+import LoginRecords from '@/components/LoginRecords'
+import LoginStats from '@/components/LoginStats'
+import UsageRecords from '@/components/UsageRecords'
+import UsageStats from '@/components/UsageStats'
 
 Vue.use(Router)
 
@@ -166,10 +170,27 @@ export default new Router({
       iconCls: 'fa fa-bar-chart',
       children: [
         {
-          path: '/charts',
+          path: '/loginRecords',
+          iconCls: 'fa fa-list',
+          name: '登录记录',
+          component: LoginRecords
+        }, {
+          path: '/loginStats',
+          iconCls: 'fa fa-pie-chart',
+          name: '登录统计',
+          component: LoginStats,
+          hidden: true
+        }, {
+          path: '/usageRecords',
+          iconCls: 'fa fa-history',
+          name: '使用记录',
+          component: UsageRecords
+        }, {
+          path: '/usageStats',
           iconCls: 'fa fa-bar-chart',
-          name: '数据统计',
-          component: DataCharts
+          name: '使用统计',
+          component: UsageStats,
+          hidden: true
         }
       ]
     }

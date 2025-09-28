@@ -150,3 +150,12 @@ export const getPromptLogDetail = (id) => {
 export const deletePromptLog = (id) => {
   return deleteRequest(`/prompt/logs/${id}`)
 }
+
+// 表元数据管理相关API
+export const updateTableMeta = (projectId, tableName, data) => {
+  return putJsonRequest(`/project/${projectId}/table-meta/${tableName}`, data)
+}
+
+export const reparseTableMeta = (projectId, tableName) => {
+  return postRequest(`/project/${projectId}/table-meta/${tableName}/reparse`)
+}
