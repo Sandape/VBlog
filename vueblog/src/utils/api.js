@@ -105,10 +105,6 @@ export const updateSqlTable = (projectId, tableName, sql, entityPath) => {
   return putJsonRequest(`/project/${projectId}/sql-tables/${tableName}`, { sql, entityPath })
 }
 
-export const updateTableMeta = (projectId, tableName, tableMeta) => {
-  return putJsonRequest(`/project/${projectId}/table-meta/${tableName}`, tableMeta)
-}
-
 export const deleteSqlTable = (projectId, tableName) => {
   return deleteRequest(`/project/${projectId}/sql-tables/${tableName}`)
 }

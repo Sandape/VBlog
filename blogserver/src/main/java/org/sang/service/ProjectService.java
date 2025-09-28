@@ -686,4 +686,78 @@ public class ProjectService {
 
         return null;
     }
+
+    /**
+     * 重新解析表元（重新触发AI分析）
+     * @param projectId 项目ID
+     * @param tableName 表名
+     * @return 0-成功，1-无权限，2-表元不存在，3-项目AI配置缺失，4-操作失败
+     */
+    public int reparseTableMeta(Long projectId, String tableName) {
+        try {
+            Long userId = Util.getCurrentUser().getId();
+
+            // 检查用户是否为项目成员
+            Project project = projectMapper.getProjectById(projectId, userId);
+            if (project == null) {
+                return 1; // 无权限
+            }
+
+            // 检查项目AI配置
+            String apiKey = project.getApiKey();
+            String apiUrl = project.getApiUrl();
+            String modelName = project.getModelName();
+
+            if (apiKey == null || apiKey.trim().isEmpty() ||
+                apiUrl == null || apiUrl.trim().isEmpty() ||
+                modelName == null || modelName.trim().isEmpty()) {
+                return 3; // 项目AI配置缺失
+            }
+
+            // 获取当前项目的表元数据Map
+            Map<String, TableMetaData> tableMetaMap = getTableMetaMapFromProject(project);
+
+            // 检查表元是否存在
+            if (!tableMetaMap.containsKey(tableName)) {
+                return 2; // 表元不存在
+            }
+
+            // 获取现有的表元数据
+            TableMetaData existingTableMeta = tableMetaMap.get(tableName);
+            String originalSql = existingTableMeta.getOriginalSql();
+
+            if (originalSql == null || originalSql.trim().isEmpty()) {
+                return 4; // SQL语句为空，无法解析
+            }
+
+            // 创建新的TableMetaData对象，将状态重置为PENDING
+            TableMetaData tableMetaData = new TableMetaData();
+            tableMetaData.setName(existingTableMeta.getName());
+            tableMetaData.setOriginalSql(originalSql);
+            tableMetaData.setEntityPath(existingTableMeta.getEntityPath());
+            tableMetaData.setParseStatus("PENDING");
+
+            // 更新表元数据
+            tableMetaMap.put(tableName, tableMetaData);
+
+            // 更新项目的SQL列表
+            String sqlListJson = objectMapper.writeValueAsString(tableMetaMap);
+            project.setSqlList(sqlListJson);
+
+            int result = projectMapper.updateProject(project);
+            if (result > 0) {
+                // 异步启动AI解析任务
+                TableMetaParseTask task = new TableMetaParseTask(
+                    userId, projectId, tableName, apiKey.trim(), apiUrl.trim(), modelName.trim(), originalSql
+                );
+                asyncTableMetaParseService.parseTableMetaAsync(task);
+                return 0;
+            }
+            return 4;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 4;
+        }
+    }
 }
