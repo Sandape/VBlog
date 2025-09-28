@@ -28,26 +28,26 @@ export default new Router({
     }, {
       path: '/home',
       component: Home,
-      name: '文章管理',
+      name: 'Prompt管理',
       iconCls: 'fa fa-file-text-o',
       children: [
         {
           path: '/publicArticleList',
-          name: '公开文章',
+          name: '公开Prompt',
           component: PublicArticleList,
           meta: {
             keepAlive: true
           }
         }, {
           path: '/articleList',
-          name: '文章列表',
+          name: 'Prompt列表',
           component: ArticleList,
           meta: {
             keepAlive: true
           }
         }, {
           path: '/postArticle',
-          name: '发表文章',
+          name: '发表Prompt',
           component: PostArticle,
           meta: {
             keepAlive: false

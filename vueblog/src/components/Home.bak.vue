@@ -1,7 +1,7 @@
 <template>
   <el-row class="container">
     <el-col :span="12" class="header">
-      <div class="title">V部落博客管理平台</div>
+      <div class="title">iwhale Prompt</div>
     </el-col>
     <el-col :span="12" class="header">
       <div class="userinfoContainer">
@@ -11,7 +11,7 @@
   </span>
           <el-dropdown-menu slot="dropdown">
             <el-dropdown-item command="sysMsg">系统消息</el-dropdown-item>
-            <el-dropdown-item command="MyArticle">我的文章</el-dropdown-item>
+            <el-dropdown-item command="MyArticle">我的Prompt</el-dropdown-item>
             <el-dropdown-item command="MyHome">个人主页</el-dropdown-item>
             <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
           </el-dropdown-menu>

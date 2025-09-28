@@ -170,7 +170,7 @@
           } else if (resp.response.status == 500) {
             _this.$message({
               type: 'error',
-              message: '该栏目下尚有文章，删除失败!'
+              message: '该专题下尚有Prompt，删除失败!'
             });
           }
         })
