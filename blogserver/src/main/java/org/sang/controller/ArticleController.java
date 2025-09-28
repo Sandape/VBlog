@@ -80,8 +80,29 @@ public class ArticleController {
         return map;
     }
 
+    /**
+     * 公开浏览所有已发表的文章
+     */
+    @RequestMapping(value = "/public/all", method = RequestMethod.GET)
+    public Map<String, Object> getPublicArticles(@RequestParam(value = "page", defaultValue = "1") Integer page, @RequestParam(value = "count", defaultValue = "6") Integer count, String keywords) {
+        int totalCount = articleService.getPublicArticleCount(keywords);
+        List<Article> articles = articleService.getPublicArticles(page, count, keywords);
+        Map<String, Object> map = new HashMap<>();
+        map.put("totalCount", totalCount);
+        map.put("articles", articles);
+        return map;
+    }
+
     @RequestMapping(value = "/{aid}", method = RequestMethod.GET)
     public Article getArticleById(@PathVariable Long aid) {
+        return articleService.getArticleById(aid);
+    }
+
+    /**
+     * 公开浏览文章详情
+     */
+    @RequestMapping(value = "/public/{aid}", method = RequestMethod.GET)
+    public Article getPublicArticleById(@PathVariable Long aid) {
         return articleService.getArticleById(aid);
     }
 

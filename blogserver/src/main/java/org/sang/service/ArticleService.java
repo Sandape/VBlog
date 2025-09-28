@@ -96,6 +96,15 @@ public class ArticleService {
         return articleMapper.getArticleByState(state, start, count, uid,keywords);
     }
 
+    /**
+     * 获取公开浏览的已发表文章
+     */
+    public List<Article> getPublicArticles(Integer page, Integer count, String keywords) {
+        int start = (page - 1) * count;
+        // 使用 state = -2 来获取所有已发表的文章（不限制用户）
+        return articleMapper.getArticleByState(-2, start, count, null, keywords);
+    }
+
 //    public List<Article> getArticleByStateByAdmin(Integer page, Integer count,String keywords) {
 //        int start = (page - 1) * count;
 //        return articleMapper.getArticleByStateByAdmin(start, count,keywords);
@@ -103,6 +112,14 @@ public class ArticleService {
 
     public int getArticleCountByState(Integer state, Long uid,String keywords) {
         return articleMapper.getArticleCountByState(state, uid,keywords);
+    }
+
+    /**
+     * 获取公开浏览文章的总数量
+     */
+    public int getPublicArticleCount(String keywords) {
+        // 使用 state = 1（已发表）且 uid = null 来获取所有已发表文章的数量
+        return articleMapper.getArticleCountByState(1, null, keywords);
     }
 
     public int updateArticleState(Long[] aids, Integer state) {
