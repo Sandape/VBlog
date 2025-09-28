@@ -1,12 +1,11 @@
 package org.sang.service;
 
+import com.alibaba.druid.support.json.JSONUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.sang.bean.Project;
 import org.sang.bean.PromptLog;
 import org.sang.bean.User;
 import org.sang.mapper.PromptLogMapper;
-import org.sang.utils.SqlParserUtil;
 import org.sang.utils.Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,7 +33,6 @@ public class PromptGeneratorService {
     @Autowired
     private LLMService llmService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 生成AI解读Prompt
@@ -69,7 +67,7 @@ public class PromptGeneratorService {
             promptLog.setApiResponse(apiResponse);
             
             // 将SQL列表转为JSON存储
-            String apiSqlJson = objectMapper.writeValueAsString(apiSqlList);
+            String apiSqlJson = JSONUtils.toJSONString(apiSqlList);
             promptLog.setApiSql(apiSqlJson);
 
             // 插入日志记录
@@ -107,9 +105,47 @@ public class PromptGeneratorService {
         try {
             // 获取当前项目的SQL列表
             Map<String, String> currentSqlMap = new HashMap<>();
+
             if (project.getSqlList() != null && !project.getSqlList().trim().isEmpty()) {
-                currentSqlMap = objectMapper.readValue(project.getSqlList(), 
-                    new TypeReference<Map<String, String>>() {});
+                String sqlListJson = project.getSqlList().trim();
+
+                try {
+                    // 验证JSON格式是否为Map<String, String>
+                    currentSqlMap = (Map<String, String>) JSONUtils.parse(sqlListJson);
+                } catch (Exception e) {
+                    // 如果反序列化失败，尝试检查是否为其他格式
+                    try {
+                        // 检查是否为数组格式
+                        @SuppressWarnings("unchecked")
+                        List<String> sqlList = (List<String>) JSONUtils.parse(sqlListJson);
+                        // 如果是数组格式，转换为Map格式（使用索引作为key）
+                        if (sqlList != null) {
+                            for (int i = 0; i < sqlList.size(); i++) {
+                                currentSqlMap.put("sql_" + i, sqlList.get(i));
+                            }
+                        }
+                    } catch (Exception e2) {
+                        // 如果还是失败，检查是否为复杂对象格式
+                        try {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> complexObj = (Map<String, Object>) JSONUtils.parse(sqlListJson);
+                            // 如果是复杂对象，尝试提取其中的SQL相关信息
+                            if (complexObj != null) {
+                                Object projectObj = complexObj.get("project");
+                                if (projectObj instanceof Map) {
+                                    @SuppressWarnings("unchecked")
+                                    Map<String, Object> projectMap = (Map<String, Object>) projectObj;
+                                    // 忽略复杂对象，使用空Map
+                                    System.err.println("Warning: Found complex project object in sqlList, ignoring: " + projectObj);
+                                }
+                            }
+                        } catch (Exception e3) {
+                            System.err.println("Error parsing sqlList JSON: " + e3.getMessage());
+                        }
+                        // 无论如何，使用空Map作为默认值
+                        currentSqlMap = new HashMap<>();
+                    }
+                }
             }
 
             // 解析新的SQL并添加到Map中
@@ -121,12 +157,13 @@ public class PromptGeneratorService {
             }
 
             // 更新项目
-            String updatedSqlJson = objectMapper.writeValueAsString(currentSqlMap);
+            String updatedSqlJson = JSONUtils.toJSONString(currentSqlMap);
             project.setSqlList(updatedSqlJson);
             projectService.updateProject(project);
 
         } catch (Exception e) {
             // 解析失败不影响主流程
+            System.err.println("Error in updateProjectSqlList: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -249,13 +286,13 @@ public class PromptGeneratorService {
             
             template.append("# 开发示例\n");
             if (project.getExampleMapperPath() != null) {
-                template.append("Mapper示例：").append(project.getExampleMapperPath()).append("\n");
+                template.append("Mapper类示例：").append(project.getExampleMapperPath()).append("\n");
             }
             if (project.getExampleEntityPath() != null) {
-                template.append("Entity示例：").append(project.getExampleEntityPath()).append("\n");
+                template.append("Entity类示例：").append(project.getExampleEntityPath()).append("\n");
             }
             if (project.getExampleInterfacePath() != null) {
-                template.append("Interface示例：").append(project.getExampleInterfacePath()).append("\n");
+                template.append("接口示例：").append(project.getExampleInterfacePath()).append("\n");
             }
             template.append("\n");
             
@@ -300,12 +337,15 @@ public class PromptGeneratorService {
 
     /**
      * 解析AI响应的JSON
+     * 先使用JsonUtils的方法，将String解析成Json，然后再从Json转成Map
      */
     private Map<String, String> parseAiResponse(String aiResponse) {
         try {
-            return objectMapper.readValue(aiResponse, new TypeReference<Map<String, String>>() {});
+            // 使用JsonUtils的方法进行解析
+            return (Map<String, String>) JSONUtils.parse(aiResponse);
         } catch (Exception e) {
             // 解析失败返回空Map
+            System.err.println("Error parsing AI response using JsonUtils: " + e.getMessage());
             return new HashMap<>();
         }
     }
