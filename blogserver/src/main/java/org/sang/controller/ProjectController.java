@@ -326,6 +326,48 @@ public class ProjectController {
     }
 
     /**
+     * 更新表元字段信息（不修改SQL，不进行AI解析）
+     * @param projectId 项目ID
+     * @param tableName 表名
+     * @param tableMeta 表元数据对象（只包含字段信息和Entity路径）
+     */
+    @PutMapping("/{projectId}/table-meta/{tableName}")
+    public RespBean updateTableMeta(@PathVariable Long projectId, @PathVariable String tableName,
+                                    @RequestBody TableMetaData tableMeta) {
+        if (tableMeta == null) {
+            return RespBean.error("表元数据不能为空！");
+        }
+
+        if (tableMeta.getColum() == null || tableMeta.getColum().isEmpty()) {
+            return RespBean.error("字段信息不能为空！");
+        }
+
+        // 验证字段信息的完整性
+        for (TableMetaData.ColumnMetaData column : tableMeta.getColum()) {
+            if (column.getColumName() == null || column.getColumName().trim().isEmpty()) {
+                return RespBean.error("字段名不能为空！");
+            }
+            if (column.getColumType() == null || column.getColumType().trim().isEmpty()) {
+                return RespBean.error("字段类型不能为空！");
+            }
+        }
+
+        int result = projectService.updateTableMetaFields(projectId, tableName, tableMeta.getColum(), tableMeta.getEntityPath());
+        switch (result) {
+            case 0:
+                return RespBean.success("表元字段更新成功！");
+            case 1:
+                return RespBean.error("无权限操作！");
+            case 2:
+                return RespBean.error("表元不存在！");
+            case 3:
+                return RespBean.error("更新失败！");
+            default:
+                return RespBean.error("更新表元字段失败！");
+        }
+    }
+
+    /**
      * 删除SQL表元（仅项目拥有者）
      * @param projectId 项目ID
      * @param tableName 表名

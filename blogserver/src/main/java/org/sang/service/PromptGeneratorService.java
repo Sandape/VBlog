@@ -84,8 +84,8 @@ public class PromptGeneratorService {
             String aiResponse = callAI(project, templateA);
 
             // 5. 构建模板B生成最终Prompt
-            String finalPrompt = buildTemplateB(project, currentUser, apiName, apiPath, 
-                                              apiRequest, apiResponse, aiResponse);
+            String finalPrompt = buildTemplateB(project, currentUser, apiName, apiPath,
+                                              apiRequest, apiResponse, aiResponse, apiSqlList);
 
             // 6. 更新日志记录
             promptLogMapper.updatePromptLogResult(promptLog.getId(), aiResponse, finalPrompt);
@@ -222,7 +222,8 @@ public class PromptGeneratorService {
      * 构建模板B
      */
     private String buildTemplateB(Project project, User currentUser, String apiName, String apiPath,
-                                 String apiRequest, String apiResponse, String aiResponse) {
+                                 String apiRequest, String apiResponse, String aiResponse,
+                                 List<Map<String, String>> apiSqlList) {
         try {
             // 解析AI响应的JSON
             Map<String, String> aiResult = parseAiResponse(aiResponse);
@@ -273,8 +274,7 @@ public class PromptGeneratorService {
             }
             
             template.append("**关联数据库表：**\n");
-            // 这里可以根据项目的SQL列表填充表信息
-            template.append("待补充具体表信息\n\n");
+            template.append(buildTableInfo(apiSqlList, project)).append("\n");
             
             template.append("**接口数据源关系**\n");
             String resourceTable = aiResult.get("resource");
@@ -356,5 +356,144 @@ public class PromptGeneratorService {
     public boolean deletePromptLog(Long id) {
         User currentUser = Util.getCurrentUser();
         return promptLogMapper.deletePromptLog(id, currentUser.getId()) > 0;
+    }
+
+    /**
+     * 构建表信息
+     */
+    private String buildTableInfo(List<Map<String, String>> apiSqlList, Project project) {
+        StringBuilder tableInfo = new StringBuilder();
+
+        if (apiSqlList != null && !apiSqlList.isEmpty()) {
+            int tableIndex = 1;
+            for (Map<String, String> sqlItem : apiSqlList) {
+                try {
+                    String tableName = null;
+                    String tableContent = null;
+
+                    // 检查是否有entity字段（优先使用entity）
+                    String entity = sqlItem.get("entity");
+                    if (entity != null && !entity.trim().isEmpty()) {
+                        // 解析entity JSON获取表信息
+                        Map<String, Object> entityMap = parseEntityJson(entity);
+                        tableName = (String) entityMap.get("name");
+
+                        // 检查是否有colum字段
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> columns = (List<Map<String, Object>>) entityMap.get("colum");
+                        if (columns != null && !columns.isEmpty()) {
+                            // 格式化为markdown表格
+                            tableContent = buildColumnTable(tableName, columns);
+                        } else {
+                            // 如果colum为空，使用原始SQL
+                            String originalSql = (String) entityMap.get("originalSql");
+                            if (originalSql != null && !originalSql.trim().isEmpty()) {
+                                tableContent = "```sql\n" + originalSql + "\n```";
+                            }
+                        }
+                    } else {
+                        // entity为空，从项目sqlList中查找
+                        String sql = sqlItem.get("sql");
+                        if (sql != null && !sql.trim().isEmpty()) {
+                            tableName = extractTableNameFromSql(sql);
+                            if (tableName != null) {
+                                // 从项目的sqlList中查找AI分析结果
+                                Map<String, Object> projectEntity = findTableFromProjectSqlList(project, tableName);
+                                if (projectEntity != null) {
+                                    @SuppressWarnings("unchecked")
+                                    List<Map<String, Object>> columns = (List<Map<String, Object>>) projectEntity.get("colum");
+                                    if (columns != null && !columns.isEmpty()) {
+                                        tableContent = buildColumnTable(tableName, columns);
+                                    } else {
+                                        // 使用原始SQL
+                                        String originalSql = (String) projectEntity.get("originalSql");
+                                        if (originalSql != null && !originalSql.trim().isEmpty()) {
+                                            tableContent = "```sql\n" + originalSql + "\n```";
+                                        }
+                                    }
+                                } else {
+                                    // 如果项目中也没有，直接使用传入的SQL
+                                    tableContent = "```sql\n" + sql + "\n```";
+                                }
+                            }
+                        }
+                    }
+
+                    // 生成表信息
+                    if (tableName != null && tableContent != null) {
+                        tableInfo.append("表").append(tableIndex).append("：[").append(tableName).append("] 表\n\n");
+                        tableInfo.append(tableContent).append("\n\n");
+                        tableIndex++;
+                    }
+
+                } catch (Exception e) {
+                    // 单个表解析失败，继续处理其他表
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        if (tableInfo.length() == 0) {
+            tableInfo.append("暂无表信息\n");
+        }
+
+        return tableInfo.toString();
+    }
+
+    /**
+     * 解析entity JSON字符串
+     */
+    private Map<String, Object> parseEntityJson(String entityJson) {
+        try {
+            return objectMapper.readValue(entityJson, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            return new HashMap<>();
+        }
+    }
+
+    /**
+     * 从项目sqlList中查找表信息
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> findTableFromProjectSqlList(Project project, String tableName) {
+        try {
+            if (project.getSqlList() != null && !project.getSqlList().trim().isEmpty()) {
+                Map<String, Object> sqlMap = objectMapper.readValue(project.getSqlList(),
+                    new TypeReference<Map<String, Object>>() {});
+                Object tableObj = sqlMap.get(tableName);
+                if (tableObj instanceof Map) {
+                    return (Map<String, Object>) tableObj;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * 构建字段表格
+     */
+    private String buildColumnTable(String tableName, List<Map<String, Object>> columns) {
+        StringBuilder table = new StringBuilder();
+        table.append("| 字段名 | 字段类型 | 字段描述 |\n");
+        table.append("|--------|----------|----------|\n");
+
+        for (Map<String, Object> column : columns) {
+            String columName = (String) column.get("columName");
+            String columType = (String) column.get("columType");
+            String columDesc = (String) column.get("columdesc");
+
+            // 处理null值
+            columName = columName != null ? columName : "";
+            columType = columType != null ? columType : "";
+            columDesc = columDesc != null ? columDesc : "";
+
+            table.append("| ").append(columName).append(" | ")
+                 .append(columType).append(" | ")
+                 .append(columDesc).append(" |\n");
+        }
+
+        return table.toString();
     }
 }

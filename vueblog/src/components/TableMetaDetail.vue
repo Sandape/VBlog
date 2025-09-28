@@ -58,8 +58,9 @@
     <el-row :gutter="20" style="margin-top: 20px;">
       <el-col :span="24">
         <el-card class="detail-card">
-          <div slot="header">
+          <div slot="header" class="card-header">
             <span>字段信息</span>
+            <el-button type="primary" @click="showFieldEditDialog" icon="el-icon-edit">编辑字段</el-button>
           </div>
 
           <el-table :data="tableMetaData.colum || []" style="width: 100%">
@@ -131,11 +132,80 @@
         </el-button>
       </div>
     </el-dialog>
+
+    <!-- 字段编辑对话框 -->
+    <el-dialog
+      title="编辑字段信息"
+      :visible.sync="fieldEditDialogVisible"
+      width="80%"
+      :close-on-click-modal="false">
+      <el-form :model="fieldEditForm" :rules="fieldFormRules" ref="fieldEditForm">
+        <el-form-item label="Entity路径" :label-width="formLabelWidth">
+          <el-input
+            v-model="fieldEditForm.entityPath"
+            placeholder="请输入Entity类路径（可选）">
+          </el-input>
+        </el-form-item>
+
+        <el-divider>字段信息</el-divider>
+
+        <div class="field-list">
+          <div v-for="(field, index) in fieldEditForm.colum" :key="index" class="field-item">
+            <el-row :gutter="10">
+              <el-col :span="6">
+                <el-input
+                  v-model="field.columName"
+                  placeholder="字段名"
+                  size="small">
+                </el-input>
+              </el-col>
+              <el-col :span="6">
+                <el-input
+                  v-model="field.columType"
+                  placeholder="字段类型"
+                  size="small">
+                </el-input>
+              </el-col>
+              <el-col :span="10">
+                <el-input
+                  v-model="field.columdesc"
+                  placeholder="字段描述"
+                  size="small">
+                </el-input>
+              </el-col>
+              <el-col :span="2">
+                <el-button
+                  type="danger"
+                  size="small"
+                  icon="el-icon-delete"
+                  @click="deleteField(index)">
+                </el-button>
+              </el-col>
+            </el-row>
+          </div>
+
+          <el-button
+            type="primary"
+            size="small"
+            icon="el-icon-plus"
+            @click="addField"
+            style="margin-top: 10px;">
+            添加字段
+          </el-button>
+        </div>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="fieldEditDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitFieldEdit" :loading="fieldEditLoading">
+          保存
+        </el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { getProjectSqlTables, updateSqlTable } from '../utils/api'
+import { getProjectSqlTables, updateSqlTable, updateTableMeta } from '../utils/api'
 
 export default {
   name: 'TableMetaDetail',
@@ -144,6 +214,8 @@ export default {
       loading: false,
       editDialogVisible: false,
       submitLoading: false,
+      fieldEditDialogVisible: false,
+      fieldEditLoading: false,
       tableName: '',
       projectId: null,
       tableMetaData: {},
@@ -151,10 +223,17 @@ export default {
         sql: '',
         entityPath: ''
       },
+      fieldEditForm: {
+        entityPath: '',
+        colum: []
+      },
       formRules: {
         sql: [
           { required: true, message: '请输入SQL语句', trigger: 'blur' }
         ]
+      },
+      fieldFormRules: {
+        // 字段编辑不再需要SQL验证
       },
       formLabelWidth: '80px'
     }
@@ -220,6 +299,70 @@ export default {
         }).finally(() => {
           this.submitLoading = false
         })
+      })
+    },
+
+    showFieldEditDialog() {
+      // 初始化字段编辑表单（不再包含SQL）
+      this.fieldEditForm.entityPath = this.tableMetaData.entityPath || ''
+      // 深拷贝字段列表，避免直接修改原始数据
+      this.fieldEditForm.colum = JSON.parse(JSON.stringify(this.tableMetaData.colum || []))
+      this.fieldEditDialogVisible = true
+    },
+
+    addField() {
+      this.fieldEditForm.colum.push({
+        columName: '',
+        columType: '',
+        columdesc: ''
+      })
+    },
+
+    deleteField(index) {
+      this.fieldEditForm.colum.splice(index, 1)
+    },
+
+    submitFieldEdit() {
+      // 验证字段信息
+      if (!this.fieldEditForm.colum || this.fieldEditForm.colum.length === 0) {
+        this.$message.warning('请至少添加一个字段')
+        return false
+      }
+
+      // 验证每个字段的必填项
+      for (let i = 0; i < this.fieldEditForm.colum.length; i++) {
+        const field = this.fieldEditForm.colum[i]
+        if (!field.columName || field.columName.trim() === '') {
+          this.$message.warning(`第${i + 1}个字段的字段名不能为空`)
+          return false
+        }
+        if (!field.columType || field.columType.trim() === '') {
+          this.$message.warning(`第${i + 1}个字段的字段类型不能为空`)
+          return false
+        }
+      }
+
+      this.fieldEditLoading = true
+
+      // 构建API调用所需的表元数据对象（只包含字段信息和Entity路径）
+      const tableMetaData = {
+        entityPath: this.fieldEditForm.entityPath,
+        colum: this.fieldEditForm.colum
+      }
+
+      updateTableMeta(this.projectId, this.tableName, tableMetaData).then(resp => {
+        if (resp && resp.status === 200 && resp.data && resp.data.status === 'success') {
+          this.$message.success('表元字段编辑成功')
+          this.fieldEditDialogVisible = false
+          this.loadTableMetaDetail()
+        } else {
+          this.$message.error((resp.data && resp.data.msg) || '编辑失败')
+        }
+      }).catch(err => {
+        console.error('编辑表元字段失败:', err)
+        this.$message.error('编辑表元字段失败')
+      }).finally(() => {
+        this.fieldEditLoading = false
       })
     },
 
@@ -324,5 +467,22 @@ export default {
 .no-data {
   text-align: center;
   padding: 40px 0;
+}
+
+.field-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.field-item {
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  background-color: #fafafa;
+}
+
+.field-item .el-row {
+  align-items: center;
 }
 </style>

@@ -568,6 +568,57 @@ public class ProjectService {
     }
 
     /**
+     * 更新表元字段信息（不修改SQL，不进行AI解析）
+     * @param projectId 项目ID
+     * @param tableName 表名
+     * @param colum 字段列表
+     * @param entityPath Entity路径（可选）
+     * @return 0-成功，1-无权限，2-表元不存在，3-操作失败
+     */
+    public int updateTableMetaFields(Long projectId, String tableName, List<TableMetaData.ColumnMetaData> colum, String entityPath) {
+        try {
+            Long userId = Util.getCurrentUser().getId();
+
+            // 检查用户是否为项目成员
+            Project project = projectMapper.getProjectById(projectId, userId);
+            if (project == null) {
+                return 1; // 无权限
+            }
+
+            // 获取当前项目的表元数据Map
+            Map<String, TableMetaData> tableMetaMap = getTableMetaMapFromProject(project);
+
+            // 检查表元是否存在
+            if (!tableMetaMap.containsKey(tableName)) {
+                return 2; // 表元不存在
+            }
+
+            // 获取现有的表元数据
+            TableMetaData tableMetaData = tableMetaMap.get(tableName);
+
+            // 只更新字段信息和Entity路径，保持原有的SQL和解析状态
+            tableMetaData.setColum(colum);
+            if (entityPath != null) {
+                tableMetaData.setEntityPath(entityPath);
+            }
+
+            // 更新项目的SQL列表
+            String sqlListJson = objectMapper.writeValueAsString(tableMetaMap);
+            project.setSqlList(sqlListJson);
+
+            int result = projectMapper.updateProject(project);
+            if (result > 0) {
+                return 0; // 成功
+            }
+            return 3; // 操作失败
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 3; // 操作失败
+        }
+    }
+
+    /**
      * 从项目对象中获取SQL Map
      */
     private Map<String, TableMetaData> getTableMetaMapFromProject(Project project) {
