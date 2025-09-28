@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.sang.mapper.ProjectMapper">
+
+    <resultMap id="ProjectResultMap" type="org.sang.bean.Project">
+        <id column="id" property="id"/>
+        <result column="project_name" property="projectName"/>
+        <result column="project_code" property="projectCode"/>
+        <result column="development_spec" property="developmentSpec"/>
+        <result column="api_key" property="apiKey"/>
+        <result column="api_url" property="apiUrl"/>
+        <result column="model_name" property="modelName"/>
+        <result column="example_mapper_path" property="exampleMapperPath"/>
+        <result column="example_entity_path" property="exampleEntityPath"/>
+        <result column="example_interface_path" property="exampleInterfacePath"/>
+        <result column="owner_id" property="ownerId"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="status" property="status"/>
+        <result column="owner_nickname" property="ownerNickname"/>
+        <result column="member_count" property="memberCount"/>
+        <result column="user_role" property="userRole"/>
+    </resultMap>
+
+    <insert id="createProject" parameterType="org.sang.bean.Project" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO project (
+            project_name, project_code, development_spec, api_key, api_url, 
+            model_name, example_mapper_path, example_entity_path, example_interface_path, 
+            owner_id, status
+        ) VALUES (
+            #{projectName}, #{projectCode}, #{developmentSpec}, #{apiKey}, #{apiUrl},
+            #{modelName}, #{exampleMapperPath}, #{exampleEntityPath}, #{exampleInterfacePath},
+            #{ownerId}, #{status}
+        )
+    </insert>
+
+    <select id="getProjectByCode" resultMap="ProjectResultMap">
+        SELECT p.*, u.nickname as owner_nickname,
+               (SELECT COUNT(*) FROM project_member pm2 WHERE pm2.project_id = p.id AND pm2.status = 1) as member_count
+        FROM project p
+        LEFT JOIN user u ON p.owner_id = u.id
+        WHERE p.project_code = #{projectCode} AND p.status = 1
+    </select>
+
+    <select id="getProjectById" resultMap="ProjectResultMap">
+        SELECT p.*, u.nickname as owner_nickname,
+               (SELECT COUNT(*) FROM project_member pm2 WHERE pm2.project_id = p.id AND pm2.status = 1) as member_count,
+               COALESCE(pm.role, 0) as user_role
+        FROM project p
+        LEFT JOIN user u ON p.owner_id = u.id
+        LEFT JOIN project_member pm ON p.id = pm.project_id AND pm.user_id = #{userId} AND pm.status = 1
+        WHERE p.id = #{id} AND p.status = 1
+    </select>
+
+    <update id="updateProject" parameterType="org.sang.bean.Project">
+        UPDATE project SET
+            project_name = #{projectName},
+            development_spec = #{developmentSpec},
+            api_key = #{apiKey},
+            api_url = #{apiUrl},
+            model_name = #{modelName},
+            example_mapper_path = #{exampleMapperPath},
+            example_entity_path = #{exampleEntityPath},
+            example_interface_path = #{exampleInterfacePath}
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteProject">
+        UPDATE project SET status = 0 WHERE id = #{id}
+    </update>
+
+    <select id="getUserProjects" resultMap="ProjectResultMap">
+        SELECT DISTINCT p.*, u.nickname as owner_nickname, pm.join_time,
+               (SELECT COUNT(*) FROM project_member pm2 WHERE pm2.project_id = p.id AND pm2.status = 1) as member_count,
+               pm.role as user_role
+        FROM project p
+        LEFT JOIN user u ON p.owner_id = u.id
+        INNER JOIN project_member pm ON p.id = pm.project_id
+        WHERE pm.user_id = #{userId} AND pm.status = 1 AND p.status = 1
+        ORDER BY pm.join_time DESC
+    </select>
+
+    <select id="getOwnedProjects" resultMap="ProjectResultMap">
+        SELECT p.*, u.nickname as owner_nickname,
+               (SELECT COUNT(*) FROM project_member pm2 WHERE pm2.project_id = p.id AND pm2.status = 1) as member_count,
+               1 as user_role
+        FROM project p
+        LEFT JOIN user u ON p.owner_id = u.id
+        WHERE p.owner_id = #{ownerId} AND p.status = 1
+        ORDER BY p.create_time DESC
+    </select>
+
+    <select id="checkProjectCodeExists" resultType="int">
+        SELECT COUNT(*) FROM project WHERE project_code = #{projectCode} AND status = 1
+    </select>
+
+    <select id="searchProjectsByName" resultMap="ProjectResultMap">
+        SELECT DISTINCT p.*, u.nickname as owner_nickname,
+               (SELECT COUNT(*) FROM project_member pm2 WHERE pm2.project_id = p.id AND pm2.status = 1) as member_count,
+               COALESCE(pm.role, 0) as user_role
+        FROM project p
+        LEFT JOIN user u ON p.owner_id = u.id
+        LEFT JOIN project_member pm ON p.id = pm.project_id AND pm.user_id = #{userId} AND pm.status = 1
+        WHERE p.project_name LIKE CONCAT('%', #{projectName}, '%') AND p.status = 1
+        ORDER BY p.create_time DESC
+    </select>
+
+</mapper>

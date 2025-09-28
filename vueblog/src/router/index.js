@@ -10,6 +10,9 @@ import UserMana from '@/components/UserMana'
 import BlogDetail from '@/components/BlogDetail'
 import PublicArticleList from '@/components/PublicArticleList'
 import PublicArticleDetail from '@/components/PublicArticleDetail'
+import ProjectList from '@/components/ProjectList'
+import CreateProject from '@/components/CreateProject'
+import JoinProject from '@/components/JoinProject'
 
 Vue.use(Router)
 
@@ -64,6 +67,43 @@ export default new Router({
           path: '/editBlog',
           name: '编辑博客',
           component: PostArticle,
+          hidden: true,
+          meta: {
+            keepAlive: false
+          }
+        }
+      ]
+    }, {
+      path: '/home',
+      component: Home,
+      name: '项目管理',
+      iconCls: 'fa fa-folder-o',
+      children: [
+        {
+          path: '/projectList',
+          name: '项目列表',
+          component: ProjectList,
+          meta: {
+            keepAlive: true
+          }
+        }, {
+          path: '/createProject',
+          name: '创建项目',
+          component: CreateProject,
+          meta: {
+            keepAlive: false
+          }
+        }, {
+          path: '/joinProject',
+          name: '加入项目',
+          component: JoinProject,
+          meta: {
+            keepAlive: false
+          }
+        }, {
+          path: '/editProject',
+          name: '编辑项目',
+          component: CreateProject,
           hidden: true,
           meta: {
             keepAlive: false

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.sang.mapper.ProjectMemberMapper">
+
+    <resultMap id="ProjectMemberResultMap" type="org.sang.bean.ProjectMember">
+        <id column="id" property="id"/>
+        <result column="project_id" property="projectId"/>
+        <result column="user_id" property="userId"/>
+        <result column="role" property="role"/>
+        <result column="join_time" property="joinTime"/>
+        <result column="status" property="status"/>
+        <result column="nickname" property="nickname"/>
+        <result column="email" property="email"/>
+        <result column="project_name" property="projectName"/>
+    </resultMap>
+
+    <insert id="addProjectMember" parameterType="org.sang.bean.ProjectMember">
+        INSERT INTO project_member (project_id, user_id, role, status)
+        VALUES (#{projectId}, #{userId}, #{role}, #{status})
+        ON DUPLICATE KEY UPDATE
+        role = #{role}, status = #{status}, join_time = CURRENT_TIMESTAMP
+    </insert>
+
+    <update id="removeProjectMember">
+        UPDATE project_member SET status = 0 
+        WHERE project_id = #{projectId} AND user_id = #{userId}
+    </update>
+
+    <select id="getProjectMembers" resultMap="ProjectMemberResultMap">
+        SELECT pm.*, u.nickname, u.email, p.project_name
+        FROM project_member pm
+        LEFT JOIN user u ON pm.user_id = u.id
+        LEFT JOIN project p ON pm.project_id = p.id
+        WHERE pm.project_id = #{projectId} AND pm.status = 1
+        ORDER BY pm.role ASC, pm.join_time ASC
+    </select>
+
+    <select id="getUserProjectRole" resultMap="ProjectMemberResultMap">
+        SELECT pm.*, u.nickname, u.email, p.project_name
+        FROM project_member pm
+        LEFT JOIN user u ON pm.user_id = u.id
+        LEFT JOIN project p ON pm.project_id = p.id
+        WHERE pm.project_id = #{projectId} AND pm.user_id = #{userId} AND pm.status = 1
+    </select>
+
+    <select id="checkUserInProject" resultType="int">
+        SELECT COUNT(*) FROM project_member 
+        WHERE project_id = #{projectId} AND user_id = #{userId} AND status = 1
+    </select>
+
+    <update id="updateMemberStatus">
+        UPDATE project_member SET status = #{status}
+        WHERE project_id = #{projectId} AND user_id = #{userId}
+    </update>
+
+    <select id="getProjectMemberCount" resultType="int">
+        SELECT COUNT(*) FROM project_member 
+        WHERE project_id = #{projectId} AND status = 1
+    </select>
+
+    <select id="getUserProjectMembers" resultMap="ProjectMemberResultMap">
+        SELECT pm.*, u.nickname, u.email, p.project_name
+        FROM project_member pm
+        LEFT JOIN user u ON pm.user_id = u.id
+        LEFT JOIN project p ON pm.project_id = p.id
+        WHERE pm.user_id = #{userId} AND pm.status = 1
+        ORDER BY pm.join_time DESC
+    </select>
+
+</mapper>

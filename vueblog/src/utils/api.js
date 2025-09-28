@@ -69,3 +69,25 @@ export const getRequest = (url,params) => {
     url: `${base}${url}`
   });
 }
+
+export const postJsonRequest = (url, params) => {
+  return axios({
+    method: 'post',
+    url: `${base}${url}`,
+    data: params,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+}
+
+export const putJsonRequest = (url, params) => {
+  return axios({
+    method: 'put',
+    url: `${base}${url}`,
+    data: params,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+}
