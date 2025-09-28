@@ -87,8 +87,8 @@ public class LLMService {
         requestBody.append("\"messages\":[");
         requestBody.append("{\"role\":\"user\",\"content\":\"").append(escapedMessage).append("\"}");
         requestBody.append("],");
-        requestBody.append("\"max_tokens\":2000,");
-        requestBody.append("\"temperature\":0.7");
+        requestBody.append("\"max_tokens\":5000,");
+        requestBody.append("\"temperature\":0.5");
         requestBody.append("}");
         
         return requestBody.toString();

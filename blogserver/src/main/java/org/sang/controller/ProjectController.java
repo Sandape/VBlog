@@ -233,6 +233,38 @@ public class ProjectController {
     }
 
     /**
+     * 新增表元（新接口路径）
+     * @param projectId 项目ID
+     * @param tableMeta 表元数据
+     */
+    @PostMapping("/{projectId}/table-meta")
+    public RespBean addTableMeta(@PathVariable Long projectId, @RequestBody TableMetaData tableMeta) {
+        if (tableMeta.getOriginalSql() == null || tableMeta.getOriginalSql().trim().isEmpty()) {
+            return RespBean.error("SQL语句不能为空！");
+        }
+
+        if (tableMeta.getName() == null || tableMeta.getName().trim().isEmpty()) {
+            return RespBean.error("表名不能为空！");
+        }
+
+        int result = projectService.addOrUpdateTableMeta(projectId, tableMeta);
+        switch (result) {
+            case 0:
+                return RespBean.success("表元添加成功！");
+            case 1:
+                return RespBean.error("无权限操作！");
+            case 2:
+                return RespBean.error("SQL语句无效！");
+            case 3:
+                return RespBean.error("项目AI配置缺失！");
+            case 4:
+                return RespBean.error("AI解析失败！");
+            default:
+                return RespBean.error("添加表元失败！");
+        }
+    }
+
+    /**
      * 获取项目SQL表元列表
      * @param projectId 项目ID
      */
@@ -241,6 +273,19 @@ public class ProjectController {
         Map<String, TableMetaData> sqlTables = projectService.getProjectSqlTables(projectId);
         if (sqlTables == null) {
             return RespBean.error("无权限查看项目SQL表元！");
+        }
+        return RespBean.success("获取成功", sqlTables);
+    }
+
+    /**
+     * 获取项目表元列表（新接口路径）
+     * @param projectId 项目ID
+     */
+    @GetMapping("/{projectId}/table-meta-list")
+    public RespBean getProjectTableMetaList(@PathVariable Long projectId) {
+        Map<String, TableMetaData> sqlTables = projectService.getProjectSqlTables(projectId);
+        if (sqlTables == null) {
+            return RespBean.error("无权限查看项目表元！");
         }
         return RespBean.success("获取成功", sqlTables);
     }

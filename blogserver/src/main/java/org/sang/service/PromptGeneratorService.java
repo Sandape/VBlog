@@ -1,7 +1,6 @@
 package org.sang.service;
 
 import com.alibaba.druid.support.json.JSONUtils;
-import com.fasterxml.jackson.core.type.TypeReference;
 import org.sang.bean.Project;
 import org.sang.bean.PromptLog;
 import org.sang.bean.User;
@@ -16,6 +15,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Prompt生成器服务类
@@ -42,11 +42,11 @@ public class PromptGeneratorService {
      * @param apiDesc 接口描述
      * @param apiRequest 接口请求体
      * @param apiResponse 接口响应体
-     * @param apiSqlList 相关数据库表SQL列表
+     * @param apiSqlList 相关数据库表SQL列表（包含entityPath）
      * @return 生成的Prompt内容
      */
     public String generatePrompt(Long projectId, String apiName, String apiPath, String apiDesc,
-                                String apiRequest, String apiResponse, List<String> apiSqlList) {
+                                String apiRequest, String apiResponse, List<Map<String, Object>> apiSqlList) {
         try {
             User currentUser = Util.getCurrentUser();
             
@@ -65,8 +65,13 @@ public class PromptGeneratorService {
             promptLog.setApiDesc(apiDesc);
             promptLog.setApiRequest(apiRequest);
             promptLog.setApiResponse(apiResponse);
-            
-            // 将SQL列表转为JSON存储
+
+            // 提取SQL列表和Entity路径信息
+            List<String> sqlList = apiSqlList.stream()
+                .map(item -> (String) item.get("sql"))
+                .collect(Collectors.toList());
+
+            // 将SQL列表转为JSON存储（保持向后兼容）
             String apiSqlJson = JSONUtils.toJSONString(apiSqlList);
             promptLog.setApiSql(apiSqlJson);
 
@@ -77,7 +82,7 @@ public class PromptGeneratorService {
             }
 
             // 3. 解析SQL并更新项目的sql_list字段
-            updateProjectSqlList(project, apiSqlList);
+            updateProjectSqlList(project, sqlList);
 
             // 4. 构建模板A并调用AI
             String templateA = buildTemplateA(apiName, apiRequest, apiResponse, apiSqlList);
@@ -111,7 +116,9 @@ public class PromptGeneratorService {
 
                 try {
                     // 验证JSON格式是否为Map<String, String>
-                    currentSqlMap = (Map<String, String>) JSONUtils.parse(sqlListJson);
+                    @SuppressWarnings("unchecked")
+                    Map<String, String> parsedMap = (Map<String, String>) JSONUtils.parse(sqlListJson);
+                    currentSqlMap = parsedMap;
                 } catch (Exception e) {
                     // 如果反序列化失败，尝试检查是否为其他格式
                     try {
@@ -133,8 +140,6 @@ public class PromptGeneratorService {
                             if (complexObj != null) {
                                 Object projectObj = complexObj.get("project");
                                 if (projectObj instanceof Map) {
-                                    @SuppressWarnings("unchecked")
-                                    Map<String, Object> projectMap = (Map<String, Object>) projectObj;
                                     // 忽略复杂对象，使用空Map
                                     System.err.println("Warning: Found complex project object in sqlList, ignoring: " + projectObj);
                                 }
@@ -208,8 +213,8 @@ public class PromptGeneratorService {
     /**
      * 构建模板A
      */
-    private String buildTemplateA(String apiName, String apiRequest, String apiResponse, 
-                                 List<String> apiSqlList) {
+    private String buildTemplateA(String apiName, String apiRequest, String apiResponse,
+                                 List<Map<String, Object>> apiSqlList) {
         StringBuilder template = new StringBuilder();
         template.append("你是一名Java Web开发领域的经验丰富开发工程师，具有丰富的需求设计与开发经验，你会针对我发送给你的[接口名]、[接口请求体]、[接口响应体]与[表元信息]进行解析，按下面的Json报文格式返回给我解析结果：\n\n");
         
@@ -237,8 +242,15 @@ public class PromptGeneratorService {
 
         template.append("# 表元信息\n");
         if (apiSqlList != null && !apiSqlList.isEmpty()) {
-            for (String sql : apiSqlList) {
-                template.append(sql).append("\n\n");
+            for (Map<String, Object> sqlItem : apiSqlList) {
+                String sql = (String) sqlItem.get("sql");
+                String entityPath = (String) sqlItem.get("entityPath");
+
+                template.append(sql);
+                if (entityPath != null && !entityPath.trim().isEmpty()) {
+                    template.append("\n\n**Entity路径**: ").append(entityPath);
+                }
+                template.append("\n\n");
             }
         }
 
@@ -342,7 +354,9 @@ public class PromptGeneratorService {
     private Map<String, String> parseAiResponse(String aiResponse) {
         try {
             // 使用JsonUtils的方法进行解析
-            return (Map<String, String>) JSONUtils.parse(aiResponse);
+            @SuppressWarnings("unchecked")
+            Map<String, String> result = (Map<String, String>) JSONUtils.parse(aiResponse);
+            return result;
         } catch (Exception e) {
             // 解析失败返回空Map
             System.err.println("Error parsing AI response using JsonUtils: " + e.getMessage());

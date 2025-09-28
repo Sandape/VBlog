@@ -43,7 +43,7 @@ public class PromptGeneratorController {
             String apiResponse = (String) request.get("apiResponse");
             
             @SuppressWarnings("unchecked")
-            List<String> apiSqlList = (List<String>) request.get("apiSqlList");
+            List<Map<String, Object>> apiSqlList = (List<Map<String, Object>>) request.get("apiSqlList");
 
             // 参数校验
           if (apiName == null || apiName.trim().isEmpty()) {

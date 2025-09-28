@@ -8,8 +8,6 @@ import org.sang.bean.TableMetaData;
 import org.sang.bean.TableMetaParseTask;
 import org.sang.mapper.ProjectMapper;
 import org.sang.mapper.ProjectMemberMapper;
-import org.sang.service.SqlAiParserService;
-import org.sang.utils.SqlParserUtil;
 import org.sang.utils.Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 
 /**
  * 项目服务类
@@ -495,6 +492,78 @@ public class ProjectService {
         } catch (Exception e) {
             e.printStackTrace();
             return 3;
+        }
+    }
+
+    /**
+     * 添加或更新表元（新接口，支持完整TableMetaData对象）
+     * @param projectId 项目ID
+     * @param tableMeta 表元数据对象
+     * @return 0-成功，1-无权限，2-SQL无效，3-项目AI配置缺失，4-操作失败
+     */
+    public int addOrUpdateTableMeta(Long projectId, TableMetaData tableMeta) {
+        try {
+            Long userId = Util.getCurrentUser().getId();
+
+            // 检查用户是否为项目成员
+            Project project = projectMapper.getProjectById(projectId, userId);
+            if (project == null) {
+                return 1; // 无权限
+            }
+
+            // 检查项目AI配置
+            String apiKey = project.getApiKey();
+            String apiUrl = project.getApiUrl();
+            String modelName = project.getModelName();
+
+            if (apiKey == null || apiKey.trim().isEmpty() ||
+                apiUrl == null || apiUrl.trim().isEmpty() ||
+                modelName == null || modelName.trim().isEmpty()) {
+                return 3; // 项目AI配置缺失
+            }
+
+            // 验证SQL是否有效
+            if (!sqlAiParserService.isValidSql(tableMeta.getOriginalSql())) {
+                return 2; // SQL无效
+            }
+
+            // 设置表元数据（初始状态为PENDING）
+            tableMeta.setParseStatus("PENDING");
+
+            // 获取当前项目的表元数据Map
+            Map<String, TableMetaData> tableMetaMap = getTableMetaMapFromProject(project);
+
+            // 使用表名作为key
+            String tableName = tableMeta.getName();
+            if (tableName == null || tableName.trim().isEmpty()) {
+                tableName = extractTableNameFromSql(tableMeta.getOriginalSql());
+                if (tableName == null || tableName.trim().isEmpty()) {
+                    tableName = "table_" + System.currentTimeMillis();
+                }
+                tableMeta.setName(tableName);
+            }
+
+            // 添加或更新表元数据
+            tableMetaMap.put(tableName, tableMeta);
+
+            // 更新项目的SQL列表
+            String sqlListJson = objectMapper.writeValueAsString(tableMetaMap);
+            project.setSqlList(sqlListJson);
+
+            int result = projectMapper.updateProject(project);
+            if (result > 0) {
+                // 异步启动AI解析任务
+                TableMetaParseTask task = new TableMetaParseTask(
+                    userId, projectId, tableName, apiKey.trim(), apiUrl.trim(), modelName.trim(), tableMeta.getOriginalSql()
+                );
+                asyncTableMetaParseService.parseTableMetaAsync(task);
+                return 0;
+            }
+            return 4;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 4;
         }
     }
 

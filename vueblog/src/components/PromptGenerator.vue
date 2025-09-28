@@ -114,25 +114,51 @@
                   <div v-for="(sql, index) in apiForm.apiSqlList" :key="index" class="sql-item">
                     <div class="sql-item-header">
                       <span>SQL {{ index + 1 }}</span>
-                      <el-button 
-                        @click="removeSql(index)" 
-                        type="text" 
-                        icon="el-icon-delete" 
-                        size="mini"
-                        :disabled="apiForm.apiSqlList.length === 1">
-                        删除
-                      </el-button>
+                      <div class="sql-item-actions">
+                        <el-button
+                          @click="openTableMetaDialog(index)"
+                          type="text"
+                          icon="el-icon-search"
+                          size="mini"
+                          title="从表元列表选择">
+                          选择表元
+                        </el-button>
+                        <el-button
+                          @click="removeSql(index)"
+                          type="text"
+                          icon="el-icon-delete"
+                          size="mini"
+                          :disabled="apiForm.apiSqlList.length === 1">
+                          删除
+                        </el-button>
+                      </div>
                     </div>
-                    <el-input 
-                      type="textarea" 
-                      :rows="6" 
-                      v-model="apiForm.apiSqlList[index]" 
-                      :placeholder="`请输入第${index + 1}个SQL语句（CREATE TABLE或INSERT语句）`">
+                    <el-input
+                      type="textarea"
+                      :rows="6"
+                      v-model="apiForm.apiSqlList[index].sql"
+                      :placeholder="`请输入第${index + 1}个SQL语句（CREATE TABLE或INSERT语句）或从表元列表中选择`">
                     </el-input>
+
+                    <!-- Entity路径输入框 -->
+                    <div class="entity-input-container">
+                      <label class="entity-label">Entity路径:</label>
+                      <el-input
+                        v-model="apiForm.apiSqlList[index].entityPath"
+                        placeholder="请输入对应的Entity类路径（可选）"
+                        size="small"
+                        class="entity-input">
+                      </el-input>
+                    </div>
                   </div>
-                  <el-button @click="addSql" type="dashed" icon="el-icon-plus" class="add-sql-btn">
-                    添加SQL语句
-                  </el-button>
+                  <div class="sql-actions">
+                    <el-button @click="addSql" type="dashed" icon="el-icon-plus" class="add-sql-btn">
+                      添加SQL语句
+                    </el-button>
+                    <el-button @click="openNewTableMetaDialog" type="primary" icon="el-icon-plus" class="add-table-btn">
+                      新增表元
+                    </el-button>
+                  </div>
                 </div>
               </el-form-item>
               
@@ -261,6 +287,132 @@
           </el-card>
         </el-col>
       </el-row>
+
+      <!-- 表元选择对话框 -->
+      <el-dialog title="选择表元" :visible.sync="tableMetaDialogVisible" width="800px" class="table-meta-dialog">
+        <div class="table-meta-search">
+          <el-input
+            placeholder="搜索表元名称..."
+            v-model="tableMetaSearchKeyword"
+            @input="filterTableMeta"
+            prefix-icon="el-icon-search"
+            style="margin-bottom: 20px;">
+          </el-input>
+        </div>
+
+        <div class="table-meta-list" v-loading="tableMetaLoading">
+          <div v-if="filteredTableMetaList.length === 0" class="no-table-meta">
+            <el-empty description="没有找到表元">
+              <el-button type="primary" @click="openNewTableMetaDialog">新增表元</el-button>
+            </el-empty>
+          </div>
+
+          <div v-for="tableMeta in filteredTableMetaList" :key="tableMeta.name" class="table-meta-item">
+            <div class="table-meta-header">
+              <h4>{{ tableMeta.name }}</h4>
+              <div class="table-meta-actions">
+                <el-tag v-if="tableMeta.parseStatus === 'COMPLETED'" type="success" size="mini">已解析</el-tag>
+                <el-tag v-else-if="tableMeta.parseStatus === 'PARSING'" type="warning" size="mini">解析中</el-tag>
+                <el-tag v-else-if="tableMeta.parseStatus === 'FAILED'" type="danger" size="mini">解析失败</el-tag>
+                <el-tag v-else type="info" size="mini">待解析</el-tag>
+
+                <el-button
+                  v-if="tableMeta.entityPath"
+                  type="text"
+                  size="mini"
+                  class="entity-path-btn">
+                  Entity: {{ tableMeta.entityPath }}
+                </el-button>
+              </div>
+            </div>
+
+            <div class="table-meta-content">
+              <div class="table-sql-preview">
+                <pre>{{ tableMeta.originalSql }}</pre>
+              </div>
+
+              <div v-if="tableMeta.colum && tableMeta.colum.length > 0" class="table-columns">
+                <h5>字段信息：</h5>
+                <el-table :data="tableMeta.colum" size="mini" stripe>
+                  <el-table-column prop="columName" label="字段名" width="120"></el-table-column>
+                  <el-table-column prop="columType" label="类型" width="100"></el-table-column>
+                  <el-table-column prop="columdesc" label="描述"></el-table-column>
+                </el-table>
+              </div>
+            </div>
+
+            <div class="table-meta-footer">
+              <el-button @click="selectTableMeta(tableMeta)" type="primary" size="small">
+                选择此表元
+              </el-button>
+              <el-button @click="editTableMeta(tableMeta)" size="small">
+                编辑表元
+              </el-button>
+            </div>
+          </div>
+        </div>
+
+        <div slot="footer" class="dialog-footer">
+          <el-button @click="tableMetaDialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="openNewTableMetaDialog">新增表元</el-button>
+        </div>
+      </el-dialog>
+
+      <!-- 新增/编辑表元对话框 -->
+      <el-dialog
+        :title="isEditTableMeta ? '编辑表元' : '新增表元'"
+        :visible.sync="newTableMetaDialogVisible"
+        width="700px"
+        class="new-table-meta-dialog">
+
+        <el-form :model="tableMetaForm" :rules="tableMetaFormRules" ref="tableMetaForm" label-width="100px">
+          <el-form-item label="表名" prop="name">
+            <el-input v-model="tableMetaForm.name" placeholder="请输入表名"></el-input>
+          </el-form-item>
+
+          <el-form-item label="原始SQL" prop="originalSql">
+            <el-input
+              type="textarea"
+              :rows="8"
+              v-model="tableMetaForm.originalSql"
+              placeholder="请输入CREATE TABLE或INSERT SQL语句">
+            </el-input>
+          </el-form-item>
+
+          <el-form-item label="Entity路径" prop="entityPath">
+            <el-input v-model="tableMetaForm.entityPath" placeholder="请输入Entity类路径（可选）"></el-input>
+            <div class="form-tip">如果有对应的Entity类，请填写完整路径，如：com.example.entity.User</div>
+          </el-form-item>
+
+          <div v-if="tableMetaForm.colum && tableMetaForm.colum.length > 0" class="columns-section">
+            <h4>字段信息</h4>
+            <div v-for="(column, index) in tableMetaForm.colum" :key="index" class="column-item">
+              <el-row :gutter="10">
+                <el-col :span="6">
+                  <el-input v-model="column.columName" placeholder="字段名" size="small"></el-input>
+                </el-col>
+                <el-col :span="5">
+                  <el-input v-model="column.columType" placeholder="类型" size="small"></el-input>
+                </el-col>
+                <el-col :span="10">
+                  <el-input v-model="column.columdesc" placeholder="描述" size="small"></el-input>
+                </el-col>
+                <el-col :span="3">
+                  <el-button @click="removeColumn(index)" type="text" icon="el-icon-delete" size="mini"></el-button>
+                </el-col>
+              </el-row>
+            </div>
+            <el-button @click="addColumn" type="text" icon="el-icon-plus" size="small">添加字段</el-button>
+          </div>
+        </el-form>
+
+        <div slot="footer" class="dialog-footer">
+          <el-button @click="newTableMetaDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveTableMeta" :loading="savingTableMeta">
+            {{ isEditTableMeta ? '更新' : '保存' }}
+          </el-button>
+        </div>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -308,7 +460,35 @@ export default {
         apiDesc: '',
         apiRequest: '',
         apiResponse: '',
-        apiSqlList: ['']
+        apiSqlList: [{ sql: '', entityPath: '' }]
+      },
+
+      // 表元数据相关
+      tableMetaList: [],
+      tableMetaDialogVisible: false,
+      selectedTableMeta: null,
+      newTableMetaDialogVisible: false,
+      isEditTableMeta: false,
+      tableMetaLoading: false,
+      savingTableMeta: false,
+      tableMetaSearchKeyword: '',
+      filteredTableMetaList: [],
+      currentSqlIndex: undefined,
+
+      // 表元表单
+      tableMetaForm: {
+        name: '',
+        originalSql: '',
+        entityPath: '',
+        colum: []
+      },
+      tableMetaFormRules: {
+        name: [
+          { required: true, message: '请输入表名', trigger: 'blur' }
+        ],
+        originalSql: [
+          { required: true, message: '请输入SQL语句', trigger: 'blur' }
+        ]
       },
       
       // 表单验证规则
@@ -320,9 +500,9 @@ export default {
           { required: true, message: '请输入接口路径', trigger: 'blur' }
         ],
         apiSqlList: [
-          { 
-            validator: this.validateSqlList, 
-            trigger: 'blur' 
+          {
+            validator: this.validateSqlList,
+            trigger: 'blur'
           }
         ]
       },
@@ -338,7 +518,7 @@ export default {
             apiDesc: '用户通过用户名和密码进行登录验证',
             apiRequest: '{\n  "username": "string",\n  "password": "string"\n}',
             apiResponse: '{\n  "code": 200,\n  "message": "登录成功",\n  "data": {\n    "userId": 1,\n    "username": "admin",\n    "nickname": "管理员",\n    "token": "eyJhbGciOiJIUzI1NiJ9..."\n  }\n}',
-            apiSqlList: ['CREATE TABLE `user` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `username` varchar(50) NOT NULL,\n  `password` varchar(255) NOT NULL,\n  `nickname` varchar(50) DEFAULT NULL,\n  `status` int DEFAULT \'1\',\n  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;']
+            apiSqlList: [{ sql: 'CREATE TABLE `user` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `username` varchar(50) NOT NULL,\n  `password` varchar(255) NOT NULL,\n  `nickname` varchar(50) DEFAULT NULL,\n  `status` int DEFAULT \'1\',\n  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;', entityPath: 'com.example.entity.User' }]
           }
         },
         {
@@ -350,7 +530,7 @@ export default {
             apiDesc: '新用户注册账号',
             apiRequest: '{\n  "username": "string",\n  "password": "string",\n  "email": "string",\n  "nickname": "string"\n}',
             apiResponse: '{\n  "code": 200,\n  "message": "注册成功",\n  "data": {\n    "userId": 1\n  }\n}',
-            apiSqlList: ['CREATE TABLE `user` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `username` varchar(50) NOT NULL UNIQUE,\n  `password` varchar(255) NOT NULL,\n  `email` varchar(100) DEFAULT NULL,\n  `nickname` varchar(50) DEFAULT NULL,\n  `status` int DEFAULT \'1\',\n  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;']
+            apiSqlList: [{ sql: 'CREATE TABLE `user` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `username` varchar(50) NOT NULL UNIQUE,\n  `password` varchar(255) NOT NULL,\n  `email` varchar(100) DEFAULT NULL,\n  `nickname` varchar(50) DEFAULT NULL,\n  `status` int DEFAULT \'1\',\n  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;', entityPath: 'com.example.entity.User' }]
           }
         },
         {
@@ -363,8 +543,8 @@ export default {
             apiRequest: '{\n  "page": 1,\n  "size": 10,\n  "category": "string",\n  "keyword": "string"\n}',
             apiResponse: '{\n  "code": 200,\n  "message": "成功",\n  "data": {\n    "list": [{\n      "id": 1,\n      "name": "商品名称",\n      "price": 99.99,\n      "categoryName": "分类名称"\n    }],\n    "total": 100\n  }\n}',
             apiSqlList: [
-              'CREATE TABLE `product` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  `price` decimal(10,2) NOT NULL,\n  `category_id` bigint NOT NULL,\n  `status` int DEFAULT \'1\',\n  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;',
-              'CREATE TABLE `category` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `name` varchar(100) NOT NULL,\n  `status` int DEFAULT \'1\',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;'
+              { sql: 'CREATE TABLE `product` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `name` varchar(255) NOT NULL,\n  `price` decimal(10,2) NOT NULL,\n  `category_id` bigint NOT NULL,\n  `status` int DEFAULT \'1\',\n  `create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;', entityPath: 'com.example.entity.Product' },
+              { sql: 'CREATE TABLE `category` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `name` varchar(100) NOT NULL,\n  `status` int DEFAULT \'1\',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;', entityPath: 'com.example.entity.Category' }
             ]
           }
         }
@@ -375,7 +555,7 @@ export default {
     canGenerate() {
       return this.apiForm.apiName && this.apiForm.apiPath &&
              this.apiForm.apiSqlList.length > 0 &&
-             this.apiForm.apiSqlList.some(sql => sql.trim() !== '')
+             this.apiForm.apiSqlList.some(item => item.sql.trim() !== '')
     },
 
     renderedMarkdown() {
@@ -438,6 +618,7 @@ export default {
       this.selectedProject = project
       this.resetForm()
       this.loadPromptLogs()
+      this.loadTableMetaList()
     },
     
     backToSelection() {
@@ -457,20 +638,138 @@ export default {
         apiDesc: '',
         apiRequest: '',
         apiResponse: '',
-        apiSqlList: ['']
+        apiSqlList: [{ sql: '', entityPath: '' }]
       }
       this.generatedPrompt = ''
       this.markdownContent = ''
       this.resetPublishForm()
+      this.resetTableMetaForm()
       if (this.$refs.apiForm) {
         this.$refs.apiForm.clearValidate()
       }
     },
-    
-    addSql() {
-      this.apiForm.apiSqlList.push('')
+
+    // 表元相关方法
+    async loadTableMetaList() {
+      if (!this.selectedProject) return
+
+      this.tableMetaLoading = true
+      try {
+        const response = await getRequest(`/project/${this.selectedProject.id}/table-meta-list`)
+        if (response.data.status === 'success') {
+          this.tableMetaList = response.data.obj || []
+          this.filteredTableMetaList = this.tableMetaList
+        } else {
+          this.$message.error('加载表元列表失败：' + response.data.msg)
+        }
+      } catch (error) {
+        this.$message.error('加载表元列表失败：' + error.message)
+      } finally {
+        this.tableMetaLoading = false
+      }
+    },
+
+    filterTableMeta() {
+      if (!this.tableMetaSearchKeyword) {
+        this.filteredTableMetaList = this.tableMetaList
+      } else {
+        this.filteredTableMetaList = this.tableMetaList.filter(tableMeta =>
+          tableMeta.name.toLowerCase().includes(this.tableMetaSearchKeyword.toLowerCase())
+        )
+      }
+    },
+
+    openTableMetaDialog(sqlIndex) {
+      this.currentSqlIndex = sqlIndex
+      this.tableMetaDialogVisible = true
+    },
+
+    selectTableMeta(tableMeta) {
+      // 将表元信息填充到对应的SQL输入框
+      if (this.currentSqlIndex !== undefined) {
+        this.apiForm.apiSqlList[this.currentSqlIndex] = {
+          sql: tableMeta.originalSql,
+          entityPath: tableMeta.entityPath || ''
+        }
+      }
+      this.tableMetaDialogVisible = false
+      this.$message.success('表元已选择')
+    },
+
+    openNewTableMetaDialog() {
+      this.isEditTableMeta = false
+      this.resetTableMetaForm()
+      this.newTableMetaDialogVisible = true
+    },
+
+    editTableMeta(tableMeta) {
+      this.isEditTableMeta = true
+      this.tableMetaForm = {
+        name: tableMeta.name,
+        originalSql: tableMeta.originalSql,
+        entityPath: tableMeta.entityPath || '',
+        colum: tableMeta.colum ? [...tableMeta.colum] : []
+      }
+      this.newTableMetaDialogVisible = true
+    },
+
+    resetTableMetaForm() {
+      this.tableMetaForm = {
+        name: '',
+        originalSql: '',
+        entityPath: '',
+        colum: []
+      }
+      if (this.$refs.tableMetaForm) {
+        this.$refs.tableMetaForm.clearValidate()
+      }
+    },
+
+    addColumn() {
+      this.tableMetaForm.colum.push({
+        columName: '',
+        columType: '',
+        columdesc: ''
+      })
+    },
+
+    removeColumn(index) {
+      this.tableMetaForm.colum.splice(index, 1)
+    },
+
+    async saveTableMeta() {
+      this.$refs.tableMetaForm.validate(async (valid) => {
+        if (!valid) {
+          this.$message.error('请完善表元信息')
+          return
+        }
+
+        this.savingTableMeta = true
+        try {
+          const requestData = {
+            ...this.tableMetaForm
+          }
+
+          const response = await postRequest(`/project/${this.selectedProject.id}/table-meta`, requestData)
+          if (response.data.status === 'success') {
+            this.$message.success(this.isEditTableMeta ? '表元更新成功' : '表元添加成功')
+            this.newTableMetaDialogVisible = false
+            this.loadTableMetaList() // 重新加载表元列表
+          } else {
+            this.$message.error('保存失败：' + response.data.msg)
+          }
+        } catch (error) {
+          this.$message.error('保存失败：' + error.message)
+        } finally {
+          this.savingTableMeta = false
+        }
+      })
     },
     
+    addSql() {
+      this.apiForm.apiSqlList.push({ sql: '', entityPath: '' })
+    },
+
     removeSql(index) {
       if (this.apiForm.apiSqlList.length > 1) {
         this.apiForm.apiSqlList.splice(index, 1)
@@ -482,13 +781,13 @@ export default {
         callback(new Error('请至少添加一个SQL语句'))
         return
       }
-      
-      const hasValidSql = value.some(sql => sql && sql.trim() !== '')
+
+      const hasValidSql = value.some(item => item.sql && item.sql.trim() !== '')
       if (!hasValidSql) {
         callback(new Error('请输入有效的SQL语句'))
         return
       }
-      
+
       callback()
     },
     
@@ -514,7 +813,12 @@ export default {
             apiDesc: this.apiForm.apiDesc || null,
             apiRequest: this.apiForm.apiRequest || null,
             apiResponse: this.apiForm.apiResponse || null,
-            apiSqlList: this.apiForm.apiSqlList.filter(sql => sql.trim() !== '')
+            apiSqlList: this.apiForm.apiSqlList
+              .filter(item => item.sql.trim() !== '')
+              .map(item => ({
+                sql: item.sql,
+                entityPath: item.entityPath || null
+              }))
           }
           
           const response = await generatePrompt(requestData)
@@ -593,7 +897,9 @@ export default {
             apiDesc: detail.apiDesc || '',
             apiRequest: detail.apiRequest || '',
             apiResponse: detail.apiResponse || '',
-            apiSqlList: detail.apiSql ? JSON.parse(detail.apiSql) : ['']
+            apiSqlList: detail.apiSql ? JSON.parse(detail.apiSql).map(item =>
+              typeof item === 'string' ? { sql: item, entityPath: '' } : item
+            ) : [{ sql: '', entityPath: '' }]
           }
           
           // 显示生成的结果
@@ -935,6 +1241,23 @@ export default {
   border-color: #409EFF;
 }
 
+/* Entity路径输入框样式 */
+.entity-input-container {
+  margin-top: 10px;
+}
+
+.entity-label {
+  display: block;
+  font-size: 12px;
+  color: #606266;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.entity-input {
+  width: 100%;
+}
+
 #prompt-editor {
   width: 100%;
   height: 400px;
@@ -1086,23 +1409,145 @@ export default {
   color: #409EFF;
 }
 
+/* 表元相关样式 */
+.table-meta-dialog .table-meta-search {
+  margin-bottom: 20px;
+}
+
+.table-meta-list {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.table-meta-item {
+  border: 1px solid #E4E7ED;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: #FAFAFA;
+}
+
+.table-meta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.table-meta-header h4 {
+  margin: 0;
+  color: #303133;
+}
+
+.table-meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.entity-path-btn {
+  font-size: 11px;
+  color: #606266;
+}
+
+.table-sql-preview {
+  background-color: #F8F9FA;
+  border: 1px solid #E9ECEF;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 15px;
+}
+
+.table-sql-preview pre {
+  margin: 0;
+  font-size: 12px;
+  color: #495057;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.table-columns {
+  margin-top: 15px;
+}
+
+.table-columns h5 {
+  margin: 0 0 10px 0;
+  color: #303133;
+  font-size: 14px;
+}
+
+.table-meta-footer {
+  margin-top: 15px;
+  text-align: right;
+  border-top: 1px solid #E4E7ED;
+  padding-top: 10px;
+}
+
+.columns-section {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #F8F9FA;
+  border-radius: 4px;
+}
+
+.column-item {
+  margin-bottom: 10px;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+.sql-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.add-table-btn {
+  background-color: #67C23A;
+  border-color: #67C23A;
+}
+
+.add-table-btn:hover {
+  background-color: #85CE61;
+  border-color: #85CE61;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .prompt-generator {
     padding: 10px;
   }
-  
+
   .form-card {
     min-height: auto;
   }
-  
+
   .prompt-content {
     font-size: 12px;
     max-height: 300px;
   }
-  
+
   .history-list {
     max-height: 200px;
+  }
+
+  .table-meta-dialog {
+    width: 95% !important;
+  }
+
+  .table-meta-item {
+    padding: 10px;
+  }
+
+  .table-meta-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }
 </style>
