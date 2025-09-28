@@ -12,6 +12,7 @@
         <el-card class="detail-card" v-loading="loading">
           <div slot="header" class="card-header">
             <span>基本信息</span>
+            <el-button type="success" @click="handleAIAnalysis" icon="el-icon-cpu" :loading="aiAnalysisLoading">AI分析</el-button>
             <el-button type="primary" @click="showEditDialog" icon="el-icon-edit">编辑</el-button>
           </div>
 
@@ -205,13 +206,14 @@
 </template>
 
 <script>
-import { getProjectSqlTables, updateSqlTable, updateTableMeta } from '../utils/api'
+import { getProjectSqlTables, updateSqlTable, updateTableMeta, reparseTableMeta } from '../utils/api'
 
 export default {
   name: 'TableMetaDetail',
   data() {
     return {
       loading: false,
+      aiAnalysisLoading: false,
       editDialogVisible: false,
       submitLoading: false,
       fieldEditDialogVisible: false,
@@ -405,6 +407,35 @@ export default {
         default:
           return '未知状态'
       }
+    },
+
+    handleAIAnalysis() {
+      this.$confirm('确定要重新触发AI分析吗？这将重新分析表元信息。', '确认操作', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.aiAnalysisLoading = true
+
+        reparseTableMeta(this.projectId, this.tableName).then(resp => {
+          if (resp && resp.status === 200 && resp.data && resp.data.status === 'success') {
+            this.$message.success('AI分析任务已启动，请稍后刷新查看结果')
+            // 重新加载表元详情
+            setTimeout(() => {
+              this.loadTableMetaDetail()
+            }, 1000)
+          } else {
+            this.$message.error((resp.data && resp.data.msg) || 'AI分析失败')
+          }
+        }).catch(err => {
+          console.error('AI分析失败:', err)
+          this.$message.error('AI分析失败')
+        }).finally(() => {
+          this.aiAnalysisLoading = false
+        })
+      }).catch(() => {
+        // 用户取消操作
+      })
     }
   }
 }

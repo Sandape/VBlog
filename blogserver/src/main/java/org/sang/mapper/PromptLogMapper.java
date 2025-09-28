@@ -2,8 +2,10 @@ package org.sang.mapper;
 
 import org.sang.bean.PromptLog;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * AI解读请求日志Mapper接口
@@ -56,4 +58,40 @@ public interface PromptLogMapper {
      * @return 影响行数
      */
     int deletePromptLog(Long id, Long userId);
+
+    /**
+     * 获取所有使用记录列表（分页）
+     * @param start 起始位置
+     * @param count 数量
+     * @return 使用记录列表
+     */
+    List<PromptLog> getAllPromptLogs(@Param("start") Integer start, @Param("count") Integer count);
+
+    /**
+     * 获取所有使用记录总数
+     * @return 总数
+     */
+    int getAllPromptLogCount();
+
+    /**
+     * 根据用户名搜索使用记录
+     * @param username 用户名
+     * @param start 起始位置
+     * @param count 数量
+     * @return 使用记录列表
+     */
+    List<PromptLog> getPromptLogsByUsername(@Param("username") String username, @Param("start") Integer start, @Param("count") Integer count);
+
+    /**
+     * 根据用户名获取使用记录总数
+     * @param username 用户名
+     * @return 总数
+     */
+    int getPromptLogCountByUsername(@Param("username") String username);
+
+    /**
+     * 获取使用统计数据（按用户分组）
+     * @return 统计数据
+     */
+    List<Map<String, Object>> getUsageStatsByUser();
 }

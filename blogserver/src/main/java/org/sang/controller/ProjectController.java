@@ -386,4 +386,28 @@ public class ProjectController {
                 return RespBean.error("删除SQL表元失败！");
         }
     }
+
+    /**
+     * 重新解析表元（重新触发AI分析）
+     * @param projectId 项目ID
+     * @param tableName 表名
+     */
+    @PostMapping("/{projectId}/sql-tables/{tableName}/reparse")
+    public RespBean reparseTableMeta(@PathVariable Long projectId, @PathVariable String tableName) {
+        int result = projectService.reparseTableMeta(projectId, tableName);
+        switch (result) {
+            case 0:
+                return RespBean.success("AI分析任务已启动！");
+            case 1:
+                return RespBean.error("无权限操作！");
+            case 2:
+                return RespBean.error("表元不存在！");
+            case 3:
+                return RespBean.error("项目AI配置缺失！");
+            case 4:
+                return RespBean.error("操作失败！");
+            default:
+                return RespBean.error("重新解析表元失败！");
+        }
+    }
 }

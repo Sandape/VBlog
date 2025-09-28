@@ -106,4 +106,17 @@
         SELECT COUNT(*) FROM login_log WHERE username LIKE CONCAT('%', #{username}, '%')
     </select>
     
+    <select id="getLoginStatsByUser" resultType="java.util.Map">
+        SELECT 
+            username,
+            nickname,
+            COUNT(*) as loginCount,
+            DATE_FORMAT(MAX(login_time), '%Y-%m-%d %H:%i:%s') as lastLoginTime,
+            (SELECT ip_address FROM login_log l2 WHERE l2.username = l1.username ORDER BY login_time DESC LIMIT 1) as lastLoginIp
+        FROM login_log l1
+        WHERE login_status = 'SUCCESS'
+        GROUP BY username, nickname
+        ORDER BY loginCount DESC, lastLoginTime DESC
+    </select>
+    
 </mapper>

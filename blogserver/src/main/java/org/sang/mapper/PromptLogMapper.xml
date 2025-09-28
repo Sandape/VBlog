@@ -23,6 +23,7 @@
     <resultMap id="DetailResultMap" type="org.sang.bean.PromptLog" extends="BaseResultMap">
         <result column="project_name" property="projectName" jdbcType="VARCHAR"/>
         <result column="user_nickname" property="userNickname" jdbcType="VARCHAR"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
     </resultMap>
 
     <!-- 插入日志记录 -->
@@ -90,5 +91,69 @@
         DELETE FROM prompt_log 
         WHERE id = #{id} AND user_id = #{userId}
     </delete>
+
+    <!-- 获取所有使用记录列表（分页） -->
+    <select id="getAllPromptLogs" resultMap="DetailResultMap">
+        SELECT 
+            pl.*,
+            p.project_name,
+            u.nickname as user_nickname,
+            u.username
+        FROM prompt_log pl
+        LEFT JOIN project p ON pl.project_id = p.id
+        LEFT JOIN user u ON pl.user_id = u.id
+        ORDER BY pl.create_time DESC
+        LIMIT #{start}, #{count}
+    </select>
+
+    <!-- 获取所有使用记录总数 -->
+    <select id="getAllPromptLogCount" resultType="int">
+        SELECT COUNT(*) FROM prompt_log
+    </select>
+
+    <!-- 根据用户名搜索使用记录 -->
+    <select id="getPromptLogsByUsername" resultMap="DetailResultMap">
+        SELECT 
+            pl.*,
+            p.project_name,
+            u.nickname as user_nickname,
+            u.username
+        FROM prompt_log pl
+        LEFT JOIN project p ON pl.project_id = p.id
+        LEFT JOIN user u ON pl.user_id = u.id
+        WHERE u.username LIKE CONCAT('%', #{username}, '%')
+        ORDER BY pl.create_time DESC
+        LIMIT #{start}, #{count}
+    </select>
+
+    <!-- 根据用户名获取使用记录总数 -->
+    <select id="getPromptLogCountByUsername" resultType="int">
+        SELECT COUNT(*) 
+        FROM prompt_log pl
+        LEFT JOIN user u ON pl.user_id = u.id
+        WHERE u.username LIKE CONCAT('%', #{username}, '%')
+    </select>
+
+    <!-- 获取使用统计数据（按用户分组） -->
+    <select id="getUsageStatsByUser" resultType="java.util.Map">
+        SELECT 
+            u.id as userId,
+            u.username,
+            u.nickname,
+            COUNT(pl.id) as usageCount,
+            DATE_FORMAT(MAX(pl.create_time), '%Y-%m-%d %H:%i:%s') as lastUsageTime,
+            (SELECT p.project_name 
+             FROM prompt_log pl2 
+             LEFT JOIN project p ON pl2.project_id = p.id 
+             WHERE pl2.user_id = u.id 
+             GROUP BY pl2.project_id 
+             ORDER BY COUNT(*) DESC 
+             LIMIT 1) as mostUsedProject
+        FROM user u
+        LEFT JOIN prompt_log pl ON u.id = pl.user_id
+        GROUP BY u.id, u.username, u.nickname
+        HAVING usageCount > 0
+        ORDER BY usageCount DESC, lastUsageTime DESC
+    </select>
 
 </mapper>
