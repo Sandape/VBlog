@@ -4,8 +4,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.sang.bean.Project;
 import org.sang.bean.ProjectMember;
+import org.sang.bean.TableMetaData;
 import org.sang.mapper.ProjectMapper;
 import org.sang.mapper.ProjectMemberMapper;
+import org.sang.service.SqlAiParserService;
 import org.sang.utils.SqlParserUtil;
 import org.sang.utils.Util;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +32,9 @@ public class ProjectService {
 
     @Autowired
     private ProjectMemberMapper projectMemberMapper;
+
+    @Autowired
+    private SqlAiParserService sqlAiParserService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -268,7 +273,7 @@ public class ProjectService {
      * 添加或更新SQL表元
      * @param projectId 项目ID
      * @param sql SQL语句
-     * @return 0-成功，1-无权限，2-SQL无效，3-操作失败
+     * @return 0-成功，1-无权限，2-SQL无效，3-项目AI配置缺失，4-AI解析失败，5-操作失败
      */
     public int addOrUpdateSqlTable(Long projectId, String sql) {
         try {
@@ -280,35 +285,54 @@ public class ProjectService {
                 return 1; // 无权限
             }
 
+            // 检查项目AI配置
+            String apiKey = project.getApiKey();
+            String apiUrl = project.getApiUrl();
+            String modelName = project.getModelName();
+
+            if (apiKey == null || apiKey.trim().isEmpty() ||
+                apiUrl == null || apiUrl.trim().isEmpty() ||
+                modelName == null || modelName.trim().isEmpty()) {
+                return 3; // 项目AI配置缺失
+            }
+
             // 验证SQL是否有效
-            if (!SqlParserUtil.isValidSql(sql)) {
+            if (!sqlAiParserService.isValidSql(sql)) {
                 return 2; // SQL无效
             }
 
-            // 解析SQL获取表名
-            Set<String> tableNames = SqlParserUtil.parseTableNames(sql);
-            if (tableNames.isEmpty()) {
-                return 2; // 无法解析表名
+            // 使用AI解析SQL
+            Map<String, Object> parsedData;
+            try {
+                parsedData = sqlAiParserService.parseSql(sql, apiKey.trim(), apiUrl.trim(), modelName.trim());
+            } catch (Exception e) {
+                e.printStackTrace();
+                return 4; // AI解析失败
             }
 
-            // 获取当前项目的SQL列表
-            Map<String, String> sqlMap = getSqlMapFromProject(project);
+            // 创建TableMetaData对象
+            TableMetaData tableMetaData = new TableMetaData();
+            tableMetaData.setName((String) parsedData.get("name"));
+            tableMetaData.setColum((java.util.List<TableMetaData.ColumnMetaData>) parsedData.get("colum"));
+            tableMetaData.setEntityPath((String) parsedData.get("entityPath"));
+            tableMetaData.setOriginalSql(sql);
 
-            // 为每个表名添加或更新SQL
-            for (String tableName : tableNames) {
-                sqlMap.put(tableName, sql);
-            }
+            // 获取当前项目的表元数据Map
+            Map<String, TableMetaData> tableMetaMap = getTableMetaMapFromProject(project);
+
+            // 添加或更新表元数据
+            tableMetaMap.put(tableMetaData.getName(), tableMetaData);
 
             // 更新项目的SQL列表
-            String sqlListJson = objectMapper.writeValueAsString(sqlMap);
+            String sqlListJson = objectMapper.writeValueAsString(tableMetaMap);
             project.setSqlList(sqlListJson);
 
             int result = projectMapper.updateProject(project);
-            return result > 0 ? 0 : 3;
+            return result > 0 ? 0 : 5;
 
         } catch (Exception e) {
             e.printStackTrace();
-            return 3;
+            return 5;
         }
     }
 
@@ -317,7 +341,7 @@ public class ProjectService {
      * @param projectId 项目ID
      * @return SQL表元Map，key为表名，value为SQL语句
      */
-    public Map<String, String> getProjectSqlTables(Long projectId) {
+    public Map<String, TableMetaData> getProjectSqlTables(Long projectId) {
         try {
             Long userId = Util.getCurrentUser().getId();
 
@@ -327,7 +351,7 @@ public class ProjectService {
                 return null; // 无权限
             }
 
-            return getSqlMapFromProject(project);
+            return getTableMetaMapFromProject(project);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -340,7 +364,7 @@ public class ProjectService {
      * @param projectId 项目ID
      * @param tableName 表名
      * @param sql 新的SQL语句
-     * @return 0-成功，1-无权限，2-SQL无效，3-表元不存在，4-操作失败
+     * @return 0-成功，1-无权限，2-SQL无效，3-表元不存在，4-项目AI配置缺失，5-AI解析失败，6-操作失败
      */
     public int updateSqlTable(Long projectId, String tableName, String sql) {
         try {
@@ -352,32 +376,60 @@ public class ProjectService {
                 return 1; // 无权限
             }
 
+            // 检查项目AI配置
+            String apiKey = project.getApiKey();
+            String apiUrl = project.getApiUrl();
+            String modelName = project.getModelName();
+
+            if (apiKey == null || apiKey.trim().isEmpty() ||
+                apiUrl == null || apiUrl.trim().isEmpty() ||
+                modelName == null || modelName.trim().isEmpty()) {
+                return 4; // 项目AI配置缺失
+            }
+
             // 验证SQL是否有效
-            if (!SqlParserUtil.isValidSql(sql)) {
+            if (!sqlAiParserService.isValidSql(sql)) {
                 return 2; // SQL无效
             }
 
-            // 获取当前项目的SQL列表
-            Map<String, String> sqlMap = getSqlMapFromProject(project);
+            // 获取当前项目的表元数据Map
+            Map<String, TableMetaData> tableMetaMap = getTableMetaMapFromProject(project);
 
             // 检查表元是否存在
-            if (!sqlMap.containsKey(tableName)) {
+            if (!tableMetaMap.containsKey(tableName)) {
                 return 3; // 表元不存在
             }
 
-            // 更新SQL
-            sqlMap.put(tableName, sql);
+            // 使用AI解析SQL
+            Map<String, Object> parsedData;
+            try {
+                parsedData = sqlAiParserService.parseSql(sql, apiKey.trim(), apiUrl.trim(), modelName.trim());
+            } catch (Exception e) {
+                e.printStackTrace();
+                return 5; // AI解析失败
+            }
+
+            // 创建TableMetaData对象
+            TableMetaData tableMetaData = new TableMetaData();
+            tableMetaData.setName((String) parsedData.get("name"));
+            tableMetaData.setColum((java.util.List<TableMetaData.ColumnMetaData>) parsedData.get("colum"));
+            tableMetaData.setEntityPath((String) parsedData.get("entityPath"));
+            tableMetaData.setOriginalSql(sql);
+
+            // 更新表元数据（可能表名会改变）
+            tableMetaMap.remove(tableName); // 移除旧的
+            tableMetaMap.put(tableMetaData.getName(), tableMetaData); // 添加新的
 
             // 更新项目的SQL列表
-            String sqlListJson = objectMapper.writeValueAsString(sqlMap);
+            String sqlListJson = objectMapper.writeValueAsString(tableMetaMap);
             project.setSqlList(sqlListJson);
 
             int result = projectMapper.updateProject(project);
-            return result > 0 ? 0 : 4;
+            return result > 0 ? 0 : 6;
 
         } catch (Exception e) {
             e.printStackTrace();
-            return 4;
+            return 6;
         }
     }
 
@@ -397,19 +449,19 @@ public class ProjectService {
                 return 1; // 无权限
             }
 
-            // 获取当前项目的SQL列表
-            Map<String, String> sqlMap = getSqlMapFromProject(project);
+            // 获取当前项目的表元数据Map
+            Map<String, TableMetaData> tableMetaMap = getTableMetaMapFromProject(project);
 
             // 检查表元是否存在
-            if (!sqlMap.containsKey(tableName)) {
+            if (!tableMetaMap.containsKey(tableName)) {
                 return 2; // 表元不存在
             }
 
             // 删除表元
-            sqlMap.remove(tableName);
+            tableMetaMap.remove(tableName);
 
             // 更新项目的SQL列表
-            String sqlListJson = objectMapper.writeValueAsString(sqlMap);
+            String sqlListJson = objectMapper.writeValueAsString(tableMetaMap);
             project.setSqlList(sqlListJson);
 
             int result = projectMapper.updateProject(project);
@@ -424,13 +476,13 @@ public class ProjectService {
     /**
      * 从项目对象中获取SQL Map
      */
-    private Map<String, String> getSqlMapFromProject(Project project) {
+    private Map<String, TableMetaData> getTableMetaMapFromProject(Project project) {
         try {
             String sqlListJson = project.getSqlList();
             if (sqlListJson == null || sqlListJson.trim().isEmpty()) {
                 return new HashMap<>();
             }
-            return objectMapper.readValue(sqlListJson, new TypeReference<Map<String, String>>() {});
+            return objectMapper.readValue(sqlListJson, new TypeReference<Map<String, TableMetaData>>() {});
         } catch (Exception e) {
             e.printStackTrace();
             return new HashMap<>();

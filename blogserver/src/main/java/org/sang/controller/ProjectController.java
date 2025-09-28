@@ -3,6 +3,7 @@ package org.sang.controller;
 import org.sang.bean.Project;
 import org.sang.bean.ProjectMember;
 import org.sang.bean.RespBean;
+import org.sang.bean.TableMetaData;
 import org.sang.service.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -208,6 +209,7 @@ public class ProjectController {
     @PostMapping("/{projectId}/sql-tables")
     public RespBean addSqlTable(@PathVariable Long projectId, @RequestBody Map<String, String> request) {
         String sql = request.get("sql");
+
         if (sql == null || sql.trim().isEmpty()) {
             return RespBean.error("SQL语句不能为空！");
         }
@@ -219,7 +221,11 @@ public class ProjectController {
             case 1:
                 return RespBean.error("无权限操作！");
             case 2:
-                return RespBean.error("SQL语句无效或无法解析表名！");
+                return RespBean.error("SQL语句无效！");
+            case 3:
+                return RespBean.error("项目AI配置缺失！");
+            case 4:
+                return RespBean.error("AI解析失败！");
             default:
                 return RespBean.error("添加SQL表元失败！");
         }
@@ -231,7 +237,7 @@ public class ProjectController {
      */
     @GetMapping("/{projectId}/sql-tables")
     public RespBean getProjectSqlTables(@PathVariable Long projectId) {
-        Map<String, String> sqlTables = projectService.getProjectSqlTables(projectId);
+        Map<String, TableMetaData> sqlTables = projectService.getProjectSqlTables(projectId);
         if (sqlTables == null) {
             return RespBean.error("无权限查看项目SQL表元！");
         }
@@ -248,6 +254,7 @@ public class ProjectController {
     public RespBean updateSqlTable(@PathVariable Long projectId, @PathVariable String tableName,
                                    @RequestBody Map<String, String> request) {
         String sql = request.get("sql");
+
         if (sql == null || sql.trim().isEmpty()) {
             return RespBean.error("SQL语句不能为空！");
         }
@@ -262,6 +269,10 @@ public class ProjectController {
                 return RespBean.error("SQL语句无效！");
             case 3:
                 return RespBean.error("表元不存在！");
+            case 4:
+                return RespBean.error("项目AI配置缺失！");
+            case 5:
+                return RespBean.error("AI解析失败！");
             default:
                 return RespBean.error("编辑SQL表元失败！");
         }

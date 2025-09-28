@@ -73,6 +73,23 @@
                   <el-tag type="info">{{ scope.row.tableName }}</el-tag>
                 </template>
               </el-table-column>
+              <el-table-column label="字段信息" width="300">
+                <template slot-scope="scope">
+                  <div v-if="scope.row.colum && scope.row.colum.length > 0">
+                    <div v-for="(column, index) in scope.row.colum.slice(0, 3)" :key="index" class="column-item">
+                      <el-tag size="mini" type="success">{{ column.columName }}</el-tag>
+                      <span class="column-type">{{ column.columType }}</span>
+                      <span class="column-desc" v-if="column.columdesc">{{ column.columdesc }}</span>
+                    </div>
+                    <div v-if="scope.row.colum.length > 3" class="more-columns">
+                      <el-tag size="mini" type="info">... 还有{{ scope.row.colum.length - 3 }}个字段</el-tag>
+                    </div>
+                  </div>
+                  <div v-else class="no-columns">
+                    <el-tag size="mini" type="warning">暂无字段信息</el-tag>
+                  </div>
+                </template>
+              </el-table-column>
               <el-table-column prop="sqlContent" label="SQL语句">
                 <template slot-scope="scope">
                   <div class="sql-content">
@@ -242,11 +259,18 @@ export default {
       getProjectSqlTables(this.selectedProject.id).then(resp => {
         if (resp && resp.status === 200 && resp.data && resp.data.status === 'success') {
           // 将对象转换为数组格式
-          const sqlMap = resp.data.obj || {}
-          this.tableMetaList = Object.keys(sqlMap).map(tableName => ({
-            tableName: tableName,
-            sqlContent: sqlMap[tableName]
-          }))
+          const tableMetaMap = resp.data.obj || {}
+          this.tableMetaList = Object.keys(tableMetaMap).map(tableName => {
+            const tableMeta = tableMetaMap[tableName]
+            return {
+              tableName: tableName,
+              name: tableMeta.name,
+              colum: tableMeta.colum,
+              entityPath: tableMeta.entityPath,
+              originalSql: tableMeta.originalSql,
+              sqlContent: tableMeta.originalSql // 保持向后兼容
+            }
+          })
         } else {
           this.tableMetaList = []
           if (resp.data && resp.data.msg) {
@@ -272,7 +296,7 @@ export default {
     showEditDialog(row) {
       this.dialogType = 'edit'
       this.currentTableName = row.tableName
-      this.tableMetaForm.sql = row.sqlContent
+      this.tableMetaForm.sql = row.originalSql || row.sqlContent
       this.dialogVisible = true
     },
 
@@ -401,6 +425,29 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.column-item {
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.column-type {
+  color: #409eff;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.column-desc {
+  color: #909399;
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+.more-columns, .no-columns {
+  margin-top: 4px;
 }
 
 .sql-content pre {
