@@ -826,10 +826,26 @@ export default {
           if (response.data.status === 'success') {
             this.generatedPrompt = response.data.obj
             this.markdownContent = response.data.obj // 设置markdown内容
+            console.log('Prompt生成成功，内容长度:', this.markdownContent.length)
+            console.log('generatedPrompt已设置:', !!this.generatedPrompt)
+            console.log('markdownContent已设置:', !!this.markdownContent)
             // 自动填充标题
             this.autoFillTitle()
             this.$message.success('Prompt生成成功！')
             this.loadPromptLogs() // 刷新历史记录
+
+            // 确保编辑器正确更新内容
+            this.$nextTick(() => {
+              console.log('编辑器引用存在:', !!this.$refs.publishMd)
+              // 等待编辑器组件完全初始化
+              setTimeout(() => {
+                if (this.$refs.publishMd && this.markdownContent) {
+                  console.log('强制刷新编辑器')
+                  // 强制触发编辑器重新渲染
+                  this.$forceUpdate()
+                }
+              }, 100)
+            })
           } else {
             this.$message.error('生成失败：' + response.data.msg)
           }
@@ -905,6 +921,16 @@ export default {
           // 显示生成的结果
           this.generatedPrompt = detail.finalPrompt || ''
           this.markdownContent = detail.finalPrompt || '' // 设置markdown内容
+          console.log('历史记录加载成功，内容长度:', this.markdownContent.length)
+
+          // 确保编辑器正确更新内容
+          this.$nextTick(() => {
+            setTimeout(() => {
+              if (this.$refs.publishMd && this.markdownContent) {
+                this.$forceUpdate()
+              }
+            }, 100)
+          })
 
           this.$message.success('历史记录已加载')
         } else {
@@ -935,7 +961,7 @@ export default {
       uploadFileRequest("/article/uploadimg", formdata).then(resp => {
         var json = resp.data
         if (json.status == 'success') {
-          _this.$refs.md.$imglst2Url([[pos, json.msg]])
+          _this.$refs.publishMd.$imglst2Url([[pos, json.msg]])
         } else {
           _this.$message({type: json.status, message: json.msg})
         }

@@ -1,10 +1,13 @@
 package org.sang.service;
 
 import com.alibaba.druid.support.json.JSONUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.sang.bean.Project;
 import org.sang.bean.PromptLog;
 import org.sang.bean.User;
 import org.sang.mapper.PromptLogMapper;
+import org.sang.utils.SqlParserUtil;
 import org.sang.utils.Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,7 +18,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Prompt生成器服务类
@@ -33,6 +35,7 @@ public class PromptGeneratorService {
     @Autowired
     private LLMService llmService;
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 生成AI解读Prompt
@@ -42,11 +45,11 @@ public class PromptGeneratorService {
      * @param apiDesc 接口描述
      * @param apiRequest 接口请求体
      * @param apiResponse 接口响应体
-     * @param apiSqlList 相关数据库表SQL列表（包含entityPath）
+     * @param apiSqlList 相关数据库表SQL列表
      * @return 生成的Prompt内容
      */
     public String generatePrompt(Long projectId, String apiName, String apiPath, String apiDesc,
-                                String apiRequest, String apiResponse, List<Map<String, Object>> apiSqlList) {
+                                String apiRequest, String apiResponse, List<Map<String, String>> apiSqlList) {
         try {
             User currentUser = Util.getCurrentUser();
             
@@ -65,14 +68,9 @@ public class PromptGeneratorService {
             promptLog.setApiDesc(apiDesc);
             promptLog.setApiRequest(apiRequest);
             promptLog.setApiResponse(apiResponse);
-
-            // 提取SQL列表和Entity路径信息
-            List<String> sqlList = apiSqlList.stream()
-                .map(item -> (String) item.get("sql"))
-                .collect(Collectors.toList());
-
-            // 将SQL列表转为JSON存储（保持向后兼容）
-            String apiSqlJson = JSONUtils.toJSONString(apiSqlList);
+            
+            // 将SQL列表转为JSON存储
+            String apiSqlJson = objectMapper.writeValueAsString(apiSqlList);
             promptLog.setApiSql(apiSqlJson);
 
             // 插入日志记录
@@ -80,9 +78,6 @@ public class PromptGeneratorService {
             if (insertResult <= 0) {
                 throw new RuntimeException("日志记录创建失败");
             }
-
-            // 3. 解析SQL并更新项目的sql_list字段
-            updateProjectSqlList(project, sqlList);
 
             // 4. 构建模板A并调用AI
             String templateA = buildTemplateA(apiName, apiRequest, apiResponse, apiSqlList);
@@ -106,69 +101,25 @@ public class PromptGeneratorService {
     /**
      * 更新项目的SQL列表
      */
-    private void updateProjectSqlList(Project project, List<String> apiSqlList) {
+    private void updateProjectSqlList(Project project, List<Map<String, String>> apiSqlList) {
         try {
             // 获取当前项目的SQL列表
             Map<String, String> currentSqlMap = new HashMap<>();
-
             if (project.getSqlList() != null && !project.getSqlList().trim().isEmpty()) {
-                String sqlListJson = project.getSqlList().trim();
-
-                try {
-                    // 验证JSON格式是否为Map<String, String>
-                    @SuppressWarnings("unchecked")
-                    Map<String, String> parsedMap = (Map<String, String>) JSONUtils.parse(sqlListJson);
-                    currentSqlMap = parsedMap;
-                } catch (Exception e) {
-                    // 如果反序列化失败，尝试检查是否为其他格式
-                    try {
-                        // 检查是否为数组格式
-                        @SuppressWarnings("unchecked")
-                        List<String> sqlList = (List<String>) JSONUtils.parse(sqlListJson);
-                        // 如果是数组格式，转换为Map格式（使用索引作为key）
-                        if (sqlList != null) {
-                            for (int i = 0; i < sqlList.size(); i++) {
-                                currentSqlMap.put("sql_" + i, sqlList.get(i));
-                            }
-                        }
-                    } catch (Exception e2) {
-                        // 如果还是失败，检查是否为复杂对象格式
-                        try {
-                            @SuppressWarnings("unchecked")
-                            Map<String, Object> complexObj = (Map<String, Object>) JSONUtils.parse(sqlListJson);
-                            // 如果是复杂对象，尝试提取其中的SQL相关信息
-                            if (complexObj != null) {
-                                Object projectObj = complexObj.get("project");
-                                if (projectObj instanceof Map) {
-                                    // 忽略复杂对象，使用空Map
-                                    System.err.println("Warning: Found complex project object in sqlList, ignoring: " + projectObj);
-                                }
-                            }
-                        } catch (Exception e3) {
-                            System.err.println("Error parsing sqlList JSON: " + e3.getMessage());
-                        }
-                        // 无论如何，使用空Map作为默认值
-                        currentSqlMap = new HashMap<>();
-                    }
-                }
+                currentSqlMap = objectMapper.readValue(project.getSqlList(), 
+                    new TypeReference<Map<String, String>>() {});
             }
 
             // 解析新的SQL并添加到Map中
-            for (String sql : apiSqlList) {
-                String tableName = extractTableNameFromSql(sql);
+            for (Map<String, String> sql : apiSqlList) {
+                String tableName = extractTableNameFromSql(sql.get("sql"));
                 if (tableName != null && !tableName.trim().isEmpty()) {
-                    currentSqlMap.put(tableName, sql);
+                    currentSqlMap.put(tableName, sql.get("sql"));
                 }
             }
 
-            // 更新项目
-            String updatedSqlJson = JSONUtils.toJSONString(currentSqlMap);
-            project.setSqlList(updatedSqlJson);
-            projectService.updateProject(project);
-
         } catch (Exception e) {
             // 解析失败不影响主流程
-            System.err.println("Error in updateProjectSqlList: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -213,8 +164,8 @@ public class PromptGeneratorService {
     /**
      * 构建模板A
      */
-    private String buildTemplateA(String apiName, String apiRequest, String apiResponse,
-                                 List<Map<String, Object>> apiSqlList) {
+    private String buildTemplateA(String apiName, String apiRequest, String apiResponse, 
+                                 List<Map<String, String>> apiSqlList) {
         StringBuilder template = new StringBuilder();
         template.append("你是一名Java Web开发领域的经验丰富开发工程师，具有丰富的需求设计与开发经验，你会针对我发送给你的[接口名]、[接口请求体]、[接口响应体]与[表元信息]进行解析，按下面的Json报文格式返回给我解析结果：\n\n");
         
@@ -242,15 +193,8 @@ public class PromptGeneratorService {
 
         template.append("# 表元信息\n");
         if (apiSqlList != null && !apiSqlList.isEmpty()) {
-            for (Map<String, Object> sqlItem : apiSqlList) {
-                String sql = (String) sqlItem.get("sql");
-                String entityPath = (String) sqlItem.get("entityPath");
-
-                template.append(sql);
-                if (entityPath != null && !entityPath.trim().isEmpty()) {
-                    template.append("\n\n**Entity路径**: ").append(entityPath);
-                }
-                template.append("\n\n");
+            for (Map<String, String> sql : apiSqlList) {
+                template.append(sql).append("\n\n");
             }
         }
 
@@ -349,7 +293,6 @@ public class PromptGeneratorService {
 
     /**
      * 解析AI响应的JSON
-     * 先使用JsonUtils的方法，将String解析成Json，然后再从Json转成Map
      */
     private Map<String, String> parseAiResponse(String aiResponse) {
         try {
@@ -359,7 +302,6 @@ public class PromptGeneratorService {
             return result;
         } catch (Exception e) {
             // 解析失败返回空Map
-            System.err.println("Error parsing AI response using JsonUtils: " + e.getMessage());
             return new HashMap<>();
         }
     }
