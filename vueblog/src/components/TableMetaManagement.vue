@@ -70,34 +70,34 @@
             <el-table :data="tableMetaList" style="width: 100%" v-loading="tableLoading">
               <el-table-column prop="tableName" label="表名" width="200">
                 <template slot-scope="scope">
-                  <el-tag type="info">{{ scope.row.tableName }}</el-tag>
+                  <el-link type="primary" @click="showTableDetail(scope.row)">
+                    {{ scope.row.tableName }}
+                  </el-link>
                 </template>
               </el-table-column>
-              <el-table-column label="字段信息" width="300">
+              <el-table-column label="Entity路径" width="250">
                 <template slot-scope="scope">
-                  <div v-if="scope.row.colum && scope.row.colum.length > 0">
-                    <div v-for="(column, index) in scope.row.colum.slice(0, 3)" :key="index" class="column-item">
-                      <el-tag size="mini" type="success">{{ column.columName }}</el-tag>
-                      <span class="column-type">{{ column.columType }}</span>
-                      <span class="column-desc" v-if="column.columdesc">{{ column.columdesc }}</span>
-                    </div>
-                    <div v-if="scope.row.colum.length > 3" class="more-columns">
-                      <el-tag size="mini" type="info">... 还有{{ scope.row.colum.length - 3 }}个字段</el-tag>
-                    </div>
+                  <div v-if="scope.row.entityPath && scope.row.entityPath.trim()" class="entity-path-display">
+                    <el-tooltip :content="scope.row.entityPath" placement="top">
+                      <span class="entity-path-text">{{ scope.row.entityPath }}</span>
+                    </el-tooltip>
                   </div>
-                  <div v-else class="no-columns">
-                    <el-tag size="mini" type="warning">暂无字段信息</el-tag>
-                  </div>
+                  <el-tag v-else type="warning" size="small">
+                    <i class="el-icon-close"></i> 未配置
+                  </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="sqlContent" label="SQL语句">
+              <el-table-column label="AI解析状态" width="150">
                 <template slot-scope="scope">
-                  <div class="sql-content">
-                    <pre>{{ scope.row.sqlContent }}</pre>
-                  </div>
+                  <el-tag
+                    :type="getParseStatusType(scope.row.parseStatus)"
+                    size="small">
+                    <i :class="getParseStatusIcon(scope.row.parseStatus)"></i>
+                    {{ getParseStatusText(scope.row.parseStatus) }}
+                  </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="150" fixed="right">
+              <el-table-column label="操作" width="200" fixed="right">
                 <template slot-scope="scope">
                   <el-button size="mini" @click="showEditDialog(scope.row)" icon="el-icon-edit">编辑</el-button>
                   <el-button
@@ -156,6 +156,12 @@
               placeholder="请输入SQL语句，支持DDL和DQL语句">
             </el-input>
           </el-form-item>
+          <el-form-item label="Entity路径" :label-width="formLabelWidth">
+            <el-input
+              v-model="tableMetaForm.entityPath"
+              placeholder="请输入Entity类路径（可选）">
+            </el-input>
+          </el-form-item>
         </el-form>
         <div slot="footer" class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
@@ -187,7 +193,8 @@ export default {
       dialogType: 'add', // 'add' 或 'edit'
       currentTableName: '',
       tableMetaForm: {
-        sql: ''
+        sql: '',
+        entityPath: ''
       },
       formRules: {
         sql: [
@@ -268,7 +275,9 @@ export default {
               colum: tableMeta.colum,
               entityPath: tableMeta.entityPath,
               originalSql: tableMeta.originalSql,
-              sqlContent: tableMeta.originalSql // 保持向后兼容
+              sqlContent: tableMeta.originalSql, // 保持向后兼容
+              parseStatus: tableMeta.parseStatus,
+              parseError: tableMeta.parseError
             }
           })
         } else {
@@ -290,6 +299,7 @@ export default {
       this.dialogType = 'add'
       this.currentTableName = ''
       this.tableMetaForm.sql = ''
+      this.tableMetaForm.entityPath = ''
       this.dialogVisible = true
     },
 
@@ -297,6 +307,7 @@ export default {
       this.dialogType = 'edit'
       this.currentTableName = row.tableName
       this.tableMetaForm.sql = row.originalSql || row.sqlContent
+      this.tableMetaForm.entityPath = row.entityPath || ''
       this.dialogVisible = true
     },
 
@@ -310,7 +321,7 @@ export default {
 
         if (this.dialogType === 'add') {
           // 添加表元
-          addSqlTable(this.selectedProject.id, this.tableMetaForm.sql).then(resp => {
+          addSqlTable(this.selectedProject.id, this.tableMetaForm.sql, this.tableMetaForm.entityPath).then(resp => {
             if (resp && resp.status === 200 && resp.data && resp.data.status === 'success') {
               this.$message.success('表元添加成功')
               this.dialogVisible = false
@@ -326,7 +337,7 @@ export default {
           })
         } else {
           // 编辑表元
-          updateSqlTable(this.selectedProject.id, this.currentTableName, this.tableMetaForm.sql).then(resp => {
+          updateSqlTable(this.selectedProject.id, this.currentTableName, this.tableMetaForm.sql, this.tableMetaForm.entityPath).then(resp => {
             if (resp && resp.status === 200 && resp.data && resp.data.status === 'success') {
               this.$message.success('表元编辑成功')
               this.dialogVisible = false
@@ -364,6 +375,58 @@ export default {
       }).catch(() => {
         // 用户取消删除
       })
+    },
+
+    showTableDetail(row) {
+      // 跳转到表元详情页面，传递表名参数
+      this.$router.push({
+        name: 'TableMetaDetail',
+        params: {
+          projectId: this.selectedProject.id,
+          tableName: row.tableName
+        }
+      })
+    },
+
+    getParseStatusType(status) {
+      switch (status) {
+        case 'COMPLETED':
+          return 'success'
+        case 'FAILED':
+          return 'danger'
+        case 'PARSING':
+          return 'warning'
+        default:
+          return 'info'
+      }
+    },
+
+    getParseStatusIcon(status) {
+      switch (status) {
+        case 'COMPLETED':
+          return 'el-icon-check'
+        case 'FAILED':
+          return 'el-icon-close'
+        case 'PARSING':
+          return 'el-icon-loading'
+        default:
+          return 'el-icon-time'
+      }
+    },
+
+    getParseStatusText(status) {
+      switch (status) {
+        case 'COMPLETED':
+          return '解析完成'
+        case 'FAILED':
+          return '解析失败'
+        case 'PARSING':
+          return '解析中'
+        case 'PENDING':
+          return '等待解析'
+        default:
+          return '未知状态'
+      }
     }
   }
 }
@@ -427,41 +490,6 @@ export default {
   align-items: center;
 }
 
-.column-item {
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.column-type {
-  color: #409eff;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.column-desc {
-  color: #909399;
-  font-size: 11px;
-  margin-left: 4px;
-}
-
-.more-columns, .no-columns {
-  margin-top: 4px;
-}
-
-.sql-content pre {
-  background-color: #f6f8fa;
-  padding: 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #24292e;
-  white-space: pre-wrap;
-  word-break: break-all;
-  margin: 0;
-  max-height: 150px;
-  overflow-y: auto;
-}
 
 .info-card, .help-card {
   margin-bottom: 20px;
@@ -486,5 +514,21 @@ export default {
 .no-projects {
   text-align: center;
   margin-top: 50px;
+}
+
+.entity-path-display {
+  max-width: 200px;
+  overflow: hidden;
+}
+
+.entity-path-text {
+  display: inline-block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #67c23a;
+  font-size: 12px;
+  font-weight: 500;
 }
 </style>

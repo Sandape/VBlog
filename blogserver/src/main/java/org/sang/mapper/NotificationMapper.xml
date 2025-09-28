@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.sang.mapper.NotificationMapper">
+
+    <resultMap id="NotificationResultMap" type="org.sang.bean.Notification">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="type" property="type"/>
+        <result column="title" property="title"/>
+        <result column="content" property="content"/>
+        <result column="is_read" property="isRead"/>
+        <result column="project_id" property="projectId"/>
+        <result column="table_name" property="tableName"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <insert id="createNotification" parameterType="org.sang.bean.Notification" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notification (
+            user_id, type, title, content, is_read, project_id, table_name, create_time
+        ) VALUES (
+            #{userId}, #{type}, #{title}, #{content}, #{isRead}, #{projectId}, #{tableName}, #{createTime}
+        )
+    </insert>
+
+    <select id="getUnreadCount" resultType="int">
+        SELECT COUNT(*) FROM notification
+        WHERE user_id = #{userId} AND is_read = 0
+    </select>
+
+    <select id="getUserNotifications" resultMap="NotificationResultMap">
+        SELECT * FROM notification
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <update id="markAsRead">
+        UPDATE notification SET is_read = 1
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <update id="markAllAsRead">
+        UPDATE notification SET is_read = 1
+        WHERE user_id = #{userId} AND is_read = 0
+    </update>
+
+    <delete id="deleteNotification">
+        DELETE FROM notification WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+</mapper>

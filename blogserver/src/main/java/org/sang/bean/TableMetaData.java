@@ -31,6 +31,16 @@ public class TableMetaData {
      */
     private String originalSql;
 
+    /**
+     * 解析状态：PENDING-等待解析，PARSING-正在解析，COMPLETED-解析完成，FAILED-解析失败
+     */
+    private String parseStatus;
+
+    /**
+     * 解析错误信息（当状态为FAILED时使用）
+     */
+    private String parseError;
+
     public TableMetaData() {
     }
 
@@ -39,6 +49,8 @@ public class TableMetaData {
         this.colum = colum;
         this.entityPath = entityPath;
         this.originalSql = originalSql;
+        this.parseStatus = "PENDING";
+        this.parseError = null;
     }
 
     public String getName() {
@@ -71,6 +83,22 @@ public class TableMetaData {
 
     public void setOriginalSql(String originalSql) {
         this.originalSql = originalSql;
+    }
+
+    public String getParseStatus() {
+        return parseStatus;
+    }
+
+    public void setParseStatus(String parseStatus) {
+        this.parseStatus = parseStatus;
+    }
+
+    public String getParseError() {
+        return parseError;
+    }
+
+    public void setParseError(String parseError) {
+        this.parseError = parseError;
     }
 
     /**
@@ -142,6 +170,8 @@ public class TableMetaData {
                 ", colum=" + colum +
                 ", entityPath='" + entityPath + '\'' +
                 ", originalSql='" + originalSql + '\'' +
+                ", parseStatus='" + parseStatus + '\'' +
+                ", parseError='" + parseError + '\'' +
                 '}';
     }
 }

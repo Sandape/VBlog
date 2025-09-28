@@ -107,4 +107,12 @@
         ORDER BY p.create_time DESC
     </select>
 
+    <select id="getProjectSqlListOnly" resultType="string">
+        SELECT sql_list FROM project WHERE id = #{projectId} AND status = 1
+    </select>
+
+    <update id="updateProjectSqlListOnly">
+        UPDATE project SET sql_list = #{sqlList}, update_time = NOW() WHERE id = #{projectId} AND status = 1
+    </update>
+
 </mapper>

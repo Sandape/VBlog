@@ -56,4 +56,14 @@ public interface ProjectMapper {
      * 根据项目名称模糊查询
      */
     List<Project> searchProjectsByName(@Param("projectName") String projectName, @Param("userId") Long userId);
+
+    /**
+     * 获取项目的SQL列表（仅用于异步更新）
+     */
+    String getProjectSqlListOnly(@Param("projectId") Long projectId);
+
+    /**
+     * 更新项目的SQL列表（仅用于异步更新）
+     */
+    int updateProjectSqlListOnly(@Param("projectId") Long projectId, @Param("sqlList") String sqlList);
 }

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.sang.bean.Project;
 import org.sang.bean.ProjectMember;
 import org.sang.bean.TableMetaData;
+import org.sang.bean.TableMetaParseTask;
 import org.sang.mapper.ProjectMapper;
 import org.sang.mapper.ProjectMemberMapper;
 import org.sang.service.SqlAiParserService;
@@ -35,6 +36,9 @@ public class ProjectService {
 
     @Autowired
     private SqlAiParserService sqlAiParserService;
+
+    @Autowired
+    private AsyncTableMetaParseService asyncTableMetaParseService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -270,12 +274,13 @@ public class ProjectService {
     }
 
     /**
-     * 添加或更新SQL表元
+     * 添加或更新SQL表元（异步AI解析）
      * @param projectId 项目ID
      * @param sql SQL语句
-     * @return 0-成功，1-无权限，2-SQL无效，3-项目AI配置缺失，4-AI解析失败，5-操作失败
+     * @param entityPath Entity路径（可选）
+     * @return 0-成功，1-无权限，2-SQL无效，3-项目AI配置缺失，4-操作失败
      */
-    public int addOrUpdateSqlTable(Long projectId, String sql) {
+    public int addOrUpdateSqlTable(Long projectId, String sql, String entityPath) {
         try {
             Long userId = Util.getCurrentUser().getId();
 
@@ -301,38 +306,47 @@ public class ProjectService {
                 return 2; // SQL无效
             }
 
-            // 使用AI解析SQL
-            Map<String, Object> parsedData;
-            try {
-                parsedData = sqlAiParserService.parseSql(sql, apiKey.trim(), apiUrl.trim(), modelName.trim());
-            } catch (Exception e) {
-                e.printStackTrace();
-                return 4; // AI解析失败
-            }
-
-            // 创建TableMetaData对象
+            // 创建TableMetaData对象（初始状态为PENDING）
             TableMetaData tableMetaData = new TableMetaData();
-            tableMetaData.setName((String) parsedData.get("name"));
-            tableMetaData.setColum((java.util.List<TableMetaData.ColumnMetaData>) parsedData.get("colum"));
-            tableMetaData.setEntityPath((String) parsedData.get("entityPath"));
+            tableMetaData.setName("temp_" + System.currentTimeMillis()); // 临时表名，稍后会被AI解析覆盖
             tableMetaData.setOriginalSql(sql);
+            tableMetaData.setParseStatus("PENDING");
+
+            // 如果提供了entityPath，则设置它
+            if (entityPath != null && !entityPath.trim().isEmpty()) {
+                tableMetaData.setEntityPath(entityPath.trim());
+            }
 
             // 获取当前项目的表元数据Map
             Map<String, TableMetaData> tableMetaMap = getTableMetaMapFromProject(project);
 
+            // 使用SQL中的表名作为key（如果能解析出来）
+            String tableName = extractTableNameFromSql(sql);
+            if (tableName == null || tableName.trim().isEmpty()) {
+                tableName = "table_" + System.currentTimeMillis();
+            }
+
             // 添加或更新表元数据
-            tableMetaMap.put(tableMetaData.getName(), tableMetaData);
+            tableMetaMap.put(tableName, tableMetaData);
 
             // 更新项目的SQL列表
             String sqlListJson = objectMapper.writeValueAsString(tableMetaMap);
             project.setSqlList(sqlListJson);
 
             int result = projectMapper.updateProject(project);
-            return result > 0 ? 0 : 5;
+            if (result > 0) {
+                // 异步启动AI解析任务
+                TableMetaParseTask task = new TableMetaParseTask(
+                    userId, projectId, tableName, apiKey.trim(), apiUrl.trim(), modelName.trim(), sql
+                );
+                asyncTableMetaParseService.parseTableMetaAsync(task);
+                return 0;
+            }
+            return 4;
 
         } catch (Exception e) {
             e.printStackTrace();
-            return 5;
+            return 4;
         }
     }
 
@@ -360,13 +374,14 @@ public class ProjectService {
     }
 
     /**
-     * 编辑SQL表元
+     * 编辑SQL表元（异步AI解析）
      * @param projectId 项目ID
      * @param tableName 表名
      * @param sql 新的SQL语句
-     * @return 0-成功，1-无权限，2-SQL无效，3-表元不存在，4-项目AI配置缺失，5-AI解析失败，6-操作失败
+     * @param entityPath Entity路径（可选）
+     * @return 0-成功，1-无权限，2-SQL无效，3-表元不存在，4-项目AI配置缺失，5-操作失败
      */
-    public int updateSqlTable(Long projectId, String tableName, String sql) {
+    public int updateSqlTable(Long projectId, String tableName, String sql, String entityPath) {
         try {
             Long userId = Util.getCurrentUser().getId();
 
@@ -384,7 +399,7 @@ public class ProjectService {
             if (apiKey == null || apiKey.trim().isEmpty() ||
                 apiUrl == null || apiUrl.trim().isEmpty() ||
                 modelName == null || modelName.trim().isEmpty()) {
-                return 4; // 项目AI配置缺失
+                    return 4; // 项目AI配置缺失
             }
 
             // 验证SQL是否有效
@@ -400,36 +415,46 @@ public class ProjectService {
                 return 3; // 表元不存在
             }
 
-            // 使用AI解析SQL
-            Map<String, Object> parsedData;
-            try {
-                parsedData = sqlAiParserService.parseSql(sql, apiKey.trim(), apiUrl.trim(), modelName.trim());
-            } catch (Exception e) {
-                e.printStackTrace();
-                return 5; // AI解析失败
-            }
-
-            // 创建TableMetaData对象
+            // 创建TableMetaData对象（初始状态为PENDING）
             TableMetaData tableMetaData = new TableMetaData();
-            tableMetaData.setName((String) parsedData.get("name"));
-            tableMetaData.setColum((java.util.List<TableMetaData.ColumnMetaData>) parsedData.get("colum"));
-            tableMetaData.setEntityPath((String) parsedData.get("entityPath"));
+            tableMetaData.setName("temp_" + System.currentTimeMillis()); // 临时表名，稍后会被AI解析覆盖
             tableMetaData.setOriginalSql(sql);
+            tableMetaData.setParseStatus("PENDING");
+
+            // 如果提供了entityPath，则设置它
+            if (entityPath != null && !entityPath.trim().isEmpty()) {
+                tableMetaData.setEntityPath(entityPath.trim());
+            }
 
             // 更新表元数据（可能表名会改变）
             tableMetaMap.remove(tableName); // 移除旧的
-            tableMetaMap.put(tableMetaData.getName(), tableMetaData); // 添加新的
+
+            // 使用新的表名作为key
+            String newTableName = extractTableNameFromSql(sql);
+            if (newTableName == null || newTableName.trim().isEmpty()) {
+                newTableName = tableName; // 如果无法提取，使用原来的表名
+            }
+
+            tableMetaMap.put(newTableName, tableMetaData); // 添加新的
 
             // 更新项目的SQL列表
             String sqlListJson = objectMapper.writeValueAsString(tableMetaMap);
             project.setSqlList(sqlListJson);
 
             int result = projectMapper.updateProject(project);
-            return result > 0 ? 0 : 6;
+            if (result > 0) {
+                // 异步启动AI解析任务
+                TableMetaParseTask task = new TableMetaParseTask(
+                    userId, projectId, newTableName, apiKey.trim(), apiUrl.trim(), modelName.trim(), sql
+                );
+                asyncTableMetaParseService.parseTableMetaAsync(task);
+                return 0;
+            }
+            return 5;
 
         } catch (Exception e) {
             e.printStackTrace();
-            return 6;
+            return 5;
         }
     }
 
@@ -487,5 +512,58 @@ public class ProjectService {
             e.printStackTrace();
             return new HashMap<>();
         }
+    }
+
+    /**
+     * 从SQL语句中提取表名
+     */
+    private String extractTableNameFromSql(String sql) {
+        if (sql == null || sql.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            // 简单的表名提取逻辑，查找CREATE TABLE或ALTER TABLE后的表名
+            String upperSql = sql.trim().toUpperCase();
+
+            // 处理CREATE TABLE语句
+            if (upperSql.startsWith("CREATE TABLE")) {
+                String afterCreate = sql.substring("CREATE TABLE".length()).trim();
+                int spaceIndex = afterCreate.indexOf(' ');
+                if (spaceIndex > 0) {
+                    String tableName = afterCreate.substring(0, spaceIndex).trim();
+                    // 移除可能的反引号
+                    return tableName.replace("`", "").replace("[", "").replace("]", "");
+                }
+            }
+
+            // 处理ALTER TABLE语句
+            if (upperSql.startsWith("ALTER TABLE")) {
+                String afterAlter = sql.substring("ALTER TABLE".length()).trim();
+                int spaceIndex = afterAlter.indexOf(' ');
+                if (spaceIndex > 0) {
+                    String tableName = afterAlter.substring(0, spaceIndex).trim();
+                    return tableName.replace("`", "").replace("[", "").replace("]", "");
+                }
+            }
+
+            // 处理其他类型的SQL，尝试从FROM子句中提取
+            int fromIndex = upperSql.indexOf(" FROM ");
+            if (fromIndex > 0) {
+                String afterFrom = sql.substring(fromIndex + " FROM ".length()).trim();
+                int spaceIndex = afterFrom.indexOf(' ');
+                if (spaceIndex > 0) {
+                    String tableName = afterFrom.substring(0, spaceIndex).trim();
+                    return tableName.replace("`", "").replace("[", "").replace("]", "");
+                } else if (afterFrom.length() > 0) {
+                    return afterFrom.split("\\s+")[0].replace("`", "").replace("[", "").replace("]", "");
+                }
+            }
+
+        } catch (Exception e) {
+            // 提取失败，返回null
+        }
+
+        return null;
     }
 }

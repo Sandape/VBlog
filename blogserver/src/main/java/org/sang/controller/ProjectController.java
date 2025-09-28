@@ -204,17 +204,18 @@ public class ProjectController {
     /**
      * 添加SQL表元
      * @param projectId 项目ID
-     * @param request 请求体，包含sql字段
+     * @param request 请求体，包含sql和entityPath字段
      */
     @PostMapping("/{projectId}/sql-tables")
     public RespBean addSqlTable(@PathVariable Long projectId, @RequestBody Map<String, String> request) {
         String sql = request.get("sql");
+        String entityPath = request.get("entityPath");
 
         if (sql == null || sql.trim().isEmpty()) {
             return RespBean.error("SQL语句不能为空！");
         }
 
-        int result = projectService.addOrUpdateSqlTable(projectId, sql.trim());
+        int result = projectService.addOrUpdateSqlTable(projectId, sql.trim(), entityPath);
         switch (result) {
             case 0:
                 return RespBean.success("SQL表元添加成功！");
@@ -248,18 +249,19 @@ public class ProjectController {
      * 编辑SQL表元
      * @param projectId 项目ID
      * @param tableName 表名
-     * @param request 请求体，包含sql字段
+     * @param request 请求体，包含sql和entityPath字段
      */
     @PutMapping("/{projectId}/sql-tables/{tableName}")
     public RespBean updateSqlTable(@PathVariable Long projectId, @PathVariable String tableName,
                                    @RequestBody Map<String, String> request) {
         String sql = request.get("sql");
+        String entityPath = request.get("entityPath");
 
         if (sql == null || sql.trim().isEmpty()) {
             return RespBean.error("SQL语句不能为空！");
         }
 
-        int result = projectService.updateSqlTable(projectId, tableName, sql.trim());
+        int result = projectService.updateSqlTable(projectId, tableName, sql.trim(), entityPath);
         switch (result) {
             case 0:
                 return RespBean.success("SQL表元编辑成功！");

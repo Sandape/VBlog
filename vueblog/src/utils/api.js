@@ -93,18 +93,39 @@ export const putJsonRequest = (url, params) => {
 }
 
 // 表元管理相关API
-export const addSqlTable = (projectId, sql) => {
-  return postJsonRequest(`/project/${projectId}/sql-tables`, { sql })
+export const addSqlTable = (projectId, sql, entityPath) => {
+  return postJsonRequest(`/project/${projectId}/sql-tables`, { sql, entityPath })
 }
 
 export const getProjectSqlTables = (projectId) => {
   return getRequest(`/project/${projectId}/sql-tables`)
 }
 
-export const updateSqlTable = (projectId, tableName, sql) => {
-  return putJsonRequest(`/project/${projectId}/sql-tables/${tableName}`, { sql })
+export const updateSqlTable = (projectId, tableName, sql, entityPath) => {
+  return putJsonRequest(`/project/${projectId}/sql-tables/${tableName}`, { sql, entityPath })
 }
 
 export const deleteSqlTable = (projectId, tableName) => {
   return deleteRequest(`/project/${projectId}/sql-tables/${tableName}`)
+}
+
+// 通知相关API
+export const getUnreadNotificationCount = () => {
+  return getRequest('/notification/unreadCount')
+}
+
+export const getUserNotifications = (limit = 20) => {
+  return getRequest(`/notification/list?limit=${limit}`)
+}
+
+export const markNotificationAsRead = (id) => {
+  return postRequest(`/notification/markRead/${id}`)
+}
+
+export const markAllNotificationsAsRead = () => {
+  return postRequest('/notification/markAllRead')
+}
+
+export const deleteNotification = (id) => {
+  return deleteRequest(`/notification/${id}`)
 }
