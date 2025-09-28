@@ -13,6 +13,7 @@
         <result column="example_mapper_path" property="exampleMapperPath"/>
         <result column="example_entity_path" property="exampleEntityPath"/>
         <result column="example_interface_path" property="exampleInterfacePath"/>
+        <result column="sql_list" property="sqlList"/>
         <result column="owner_id" property="ownerId"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
@@ -24,13 +25,13 @@
 
     <insert id="createProject" parameterType="org.sang.bean.Project" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO project (
-            project_name, project_code, development_spec, api_key, api_url, 
-            model_name, example_mapper_path, example_entity_path, example_interface_path, 
-            owner_id, status
+            project_name, project_code, development_spec, api_key, api_url,
+            model_name, example_mapper_path, example_entity_path, example_interface_path,
+            sql_list, owner_id, status
         ) VALUES (
             #{projectName}, #{projectCode}, #{developmentSpec}, #{apiKey}, #{apiUrl},
             #{modelName}, #{exampleMapperPath}, #{exampleEntityPath}, #{exampleInterfacePath},
-            #{ownerId}, #{status}
+            #{sqlList}, #{ownerId}, #{status}
         )
     </insert>
 
@@ -61,7 +62,8 @@
             model_name = #{modelName},
             example_mapper_path = #{exampleMapperPath},
             example_entity_path = #{exampleEntityPath},
-            example_interface_path = #{exampleInterfacePath}
+            example_interface_path = #{exampleInterfacePath},
+            sql_list = #{sqlList}
         WHERE id = #{id}
     </update>
 

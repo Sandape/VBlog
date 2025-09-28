@@ -16,6 +16,7 @@ public class Project {
     private String exampleMapperPath;
     private String exampleEntityPath;
     private String exampleInterfacePath;
+    private String sqlList; // JSON格式：{"table_name": "sql_content"}
     private Long ownerId;
     private Timestamp createTime;
     private Timestamp updateTime;
@@ -104,6 +105,14 @@ public class Project {
 
     public void setExampleInterfacePath(String exampleInterfacePath) {
         this.exampleInterfacePath = exampleInterfacePath;
+    }
+
+    public String getSqlList() {
+        return sqlList;
+    }
+
+    public void setSqlList(String sqlList) {
+        this.sqlList = sqlList;
     }
 
     public Long getOwnerId() {

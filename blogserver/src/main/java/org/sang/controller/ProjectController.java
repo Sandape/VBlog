@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 项目控制器
@@ -197,5 +198,92 @@ public class ProjectController {
             return RespBean.success("获取成功", previewProject);
         }
         return RespBean.error("项目不存在！");
+    }
+
+    /**
+     * 添加SQL表元
+     * @param projectId 项目ID
+     * @param request 请求体，包含sql字段
+     */
+    @PostMapping("/{projectId}/sql-tables")
+    public RespBean addSqlTable(@PathVariable Long projectId, @RequestBody Map<String, String> request) {
+        String sql = request.get("sql");
+        if (sql == null || sql.trim().isEmpty()) {
+            return RespBean.error("SQL语句不能为空！");
+        }
+
+        int result = projectService.addOrUpdateSqlTable(projectId, sql.trim());
+        switch (result) {
+            case 0:
+                return RespBean.success("SQL表元添加成功！");
+            case 1:
+                return RespBean.error("无权限操作！");
+            case 2:
+                return RespBean.error("SQL语句无效或无法解析表名！");
+            default:
+                return RespBean.error("添加SQL表元失败！");
+        }
+    }
+
+    /**
+     * 获取项目SQL表元列表
+     * @param projectId 项目ID
+     */
+    @GetMapping("/{projectId}/sql-tables")
+    public RespBean getProjectSqlTables(@PathVariable Long projectId) {
+        Map<String, String> sqlTables = projectService.getProjectSqlTables(projectId);
+        if (sqlTables == null) {
+            return RespBean.error("无权限查看项目SQL表元！");
+        }
+        return RespBean.success("获取成功", sqlTables);
+    }
+
+    /**
+     * 编辑SQL表元
+     * @param projectId 项目ID
+     * @param tableName 表名
+     * @param request 请求体，包含sql字段
+     */
+    @PutMapping("/{projectId}/sql-tables/{tableName}")
+    public RespBean updateSqlTable(@PathVariable Long projectId, @PathVariable String tableName,
+                                   @RequestBody Map<String, String> request) {
+        String sql = request.get("sql");
+        if (sql == null || sql.trim().isEmpty()) {
+            return RespBean.error("SQL语句不能为空！");
+        }
+
+        int result = projectService.updateSqlTable(projectId, tableName, sql.trim());
+        switch (result) {
+            case 0:
+                return RespBean.success("SQL表元编辑成功！");
+            case 1:
+                return RespBean.error("无权限操作！");
+            case 2:
+                return RespBean.error("SQL语句无效！");
+            case 3:
+                return RespBean.error("表元不存在！");
+            default:
+                return RespBean.error("编辑SQL表元失败！");
+        }
+    }
+
+    /**
+     * 删除SQL表元（仅项目拥有者）
+     * @param projectId 项目ID
+     * @param tableName 表名
+     */
+    @DeleteMapping("/{projectId}/sql-tables/{tableName}")
+    public RespBean deleteSqlTable(@PathVariable Long projectId, @PathVariable String tableName) {
+        int result = projectService.deleteSqlTable(projectId, tableName);
+        switch (result) {
+            case 0:
+                return RespBean.success("SQL表元删除成功！");
+            case 1:
+                return RespBean.error("无权限操作！仅项目拥有者可以删除表元！");
+            case 2:
+                return RespBean.error("表元不存在！");
+            default:
+                return RespBean.error("删除SQL表元失败！");
+        }
     }
 }

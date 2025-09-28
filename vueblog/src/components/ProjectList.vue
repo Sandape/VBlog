@@ -24,13 +24,14 @@
               {{ formatDate(scope.row.createTime) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="200">
+          <el-table-column label="操作" width="250">
             <template slot-scope="scope">
               <el-button size="mini" @click="viewProject(scope.row)">查看详情</el-button>
-              <el-button 
-                v-if="scope.row.userRole === 2" 
-                size="mini" 
-                type="warning" 
+              <el-button size="mini" type="success" @click="manageTableMeta(scope.row)">表元管理</el-button>
+              <el-button
+                v-if="scope.row.userRole === 2"
+                size="mini"
+                type="warning"
                 @click="leaveProject(scope.row)">
                 退出项目
               </el-button>
@@ -53,9 +54,10 @@
               {{ formatDate(scope.row.createTime) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="250">
+          <el-table-column label="操作" width="300">
             <template slot-scope="scope">
               <el-button size="mini" @click="viewProject(scope.row)">查看详情</el-button>
+              <el-button size="mini" type="success" @click="manageTableMeta(scope.row)">表元管理</el-button>
               <el-button size="mini" type="primary" @click="editProject(scope.row)">编辑</el-button>
               <el-button size="mini" type="danger" @click="deleteProject(scope.row)">删除</el-button>
             </template>
@@ -338,6 +340,17 @@ export default {
       }
     },
     
+    manageTableMeta(project) {
+      // 跳转到表元管理页面，传递项目信息
+      this.$router.push({
+        path: '/tableMetaManagement',
+        query: {
+          projectId: project.id,
+          projectName: project.projectName
+        }
+      })
+    },
+
     formatDate(dateStr) {
       if (!dateStr) return ''
       const date = new Date(dateStr)

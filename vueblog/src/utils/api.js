@@ -91,3 +91,20 @@ export const putJsonRequest = (url, params) => {
     }
   });
 }
+
+// 表元管理相关API
+export const addSqlTable = (projectId, sql) => {
+  return postJsonRequest(`/project/${projectId}/sql-tables`, { sql })
+}
+
+export const getProjectSqlTables = (projectId) => {
+  return getRequest(`/project/${projectId}/sql-tables`)
+}
+
+export const updateSqlTable = (projectId, tableName, sql) => {
+  return putJsonRequest(`/project/${projectId}/sql-tables/${tableName}`, { sql })
+}
+
+export const deleteSqlTable = (projectId, tableName) => {
+  return deleteRequest(`/project/${projectId}/sql-tables/${tableName}`)
+}

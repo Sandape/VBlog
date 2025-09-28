@@ -1,16 +1,22 @@
 package org.sang.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.sang.bean.Project;
 import org.sang.bean.ProjectMember;
 import org.sang.mapper.ProjectMapper;
 import org.sang.mapper.ProjectMemberMapper;
+import org.sang.utils.SqlParserUtil;
 import org.sang.utils.Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * 项目服务类
@@ -24,6 +30,8 @@ public class ProjectService {
 
     @Autowired
     private ProjectMemberMapper projectMemberMapper;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 创建项目
@@ -253,6 +261,179 @@ public class ProjectService {
         } catch (Exception e) {
             e.printStackTrace();
             return 3;
+        }
+    }
+
+    /**
+     * 添加或更新SQL表元
+     * @param projectId 项目ID
+     * @param sql SQL语句
+     * @return 0-成功，1-无权限，2-SQL无效，3-操作失败
+     */
+    public int addOrUpdateSqlTable(Long projectId, String sql) {
+        try {
+            Long userId = Util.getCurrentUser().getId();
+
+            // 检查用户是否为项目成员
+            Project project = projectMapper.getProjectById(projectId, userId);
+            if (project == null) {
+                return 1; // 无权限
+            }
+
+            // 验证SQL是否有效
+            if (!SqlParserUtil.isValidSql(sql)) {
+                return 2; // SQL无效
+            }
+
+            // 解析SQL获取表名
+            Set<String> tableNames = SqlParserUtil.parseTableNames(sql);
+            if (tableNames.isEmpty()) {
+                return 2; // 无法解析表名
+            }
+
+            // 获取当前项目的SQL列表
+            Map<String, String> sqlMap = getSqlMapFromProject(project);
+
+            // 为每个表名添加或更新SQL
+            for (String tableName : tableNames) {
+                sqlMap.put(tableName, sql);
+            }
+
+            // 更新项目的SQL列表
+            String sqlListJson = objectMapper.writeValueAsString(sqlMap);
+            project.setSqlList(sqlListJson);
+
+            int result = projectMapper.updateProject(project);
+            return result > 0 ? 0 : 3;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 3;
+        }
+    }
+
+    /**
+     * 获取项目SQL表元列表
+     * @param projectId 项目ID
+     * @return SQL表元Map，key为表名，value为SQL语句
+     */
+    public Map<String, String> getProjectSqlTables(Long projectId) {
+        try {
+            Long userId = Util.getCurrentUser().getId();
+
+            // 检查用户是否为项目成员
+            Project project = projectMapper.getProjectById(projectId, userId);
+            if (project == null) {
+                return null; // 无权限
+            }
+
+            return getSqlMapFromProject(project);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new HashMap<>();
+        }
+    }
+
+    /**
+     * 编辑SQL表元
+     * @param projectId 项目ID
+     * @param tableName 表名
+     * @param sql 新的SQL语句
+     * @return 0-成功，1-无权限，2-SQL无效，3-表元不存在，4-操作失败
+     */
+    public int updateSqlTable(Long projectId, String tableName, String sql) {
+        try {
+            Long userId = Util.getCurrentUser().getId();
+
+            // 检查用户是否为项目成员
+            Project project = projectMapper.getProjectById(projectId, userId);
+            if (project == null) {
+                return 1; // 无权限
+            }
+
+            // 验证SQL是否有效
+            if (!SqlParserUtil.isValidSql(sql)) {
+                return 2; // SQL无效
+            }
+
+            // 获取当前项目的SQL列表
+            Map<String, String> sqlMap = getSqlMapFromProject(project);
+
+            // 检查表元是否存在
+            if (!sqlMap.containsKey(tableName)) {
+                return 3; // 表元不存在
+            }
+
+            // 更新SQL
+            sqlMap.put(tableName, sql);
+
+            // 更新项目的SQL列表
+            String sqlListJson = objectMapper.writeValueAsString(sqlMap);
+            project.setSqlList(sqlListJson);
+
+            int result = projectMapper.updateProject(project);
+            return result > 0 ? 0 : 4;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 4;
+        }
+    }
+
+    /**
+     * 删除SQL表元（仅项目拥有者可操作）
+     * @param projectId 项目ID
+     * @param tableName 表名
+     * @return 0-成功，1-无权限，2-表元不存在，3-操作失败
+     */
+    public int deleteSqlTable(Long projectId, String tableName) {
+        try {
+            Long userId = Util.getCurrentUser().getId();
+
+            // 检查是否为项目拥有者
+            Project project = projectMapper.getProjectById(projectId, userId);
+            if (project == null || !project.getOwnerId().equals(userId)) {
+                return 1; // 无权限
+            }
+
+            // 获取当前项目的SQL列表
+            Map<String, String> sqlMap = getSqlMapFromProject(project);
+
+            // 检查表元是否存在
+            if (!sqlMap.containsKey(tableName)) {
+                return 2; // 表元不存在
+            }
+
+            // 删除表元
+            sqlMap.remove(tableName);
+
+            // 更新项目的SQL列表
+            String sqlListJson = objectMapper.writeValueAsString(sqlMap);
+            project.setSqlList(sqlListJson);
+
+            int result = projectMapper.updateProject(project);
+            return result > 0 ? 0 : 3;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 3;
+        }
+    }
+
+    /**
+     * 从项目对象中获取SQL Map
+     */
+    private Map<String, String> getSqlMapFromProject(Project project) {
+        try {
+            String sqlListJson = project.getSqlList();
+            if (sqlListJson == null || sqlListJson.trim().isEmpty()) {
+                return new HashMap<>();
+            }
+            return objectMapper.readValue(sqlListJson, new TypeReference<Map<String, String>>() {});
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new HashMap<>();
         }
     }
 }

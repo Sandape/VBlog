@@ -14,6 +14,7 @@ import ProjectList from '@/components/ProjectList'
 import CreateProject from '@/components/CreateProject'
 import JoinProject from '@/components/JoinProject'
 import PromptGenerator from '@/components/PromptGenerator'
+import TableMetaManagement from '@/components/TableMetaManagement'
 
 Vue.use(Router)
 
@@ -113,6 +114,13 @@ export default new Router({
           name: '编辑项目',
           component: CreateProject,
           hidden: true,
+          meta: {
+            keepAlive: false
+          }
+        }, {
+          path: '/tableMetaManagement',
+          name: '表元管理',
+          component: TableMetaManagement,
           meta: {
             keepAlive: false
           }
