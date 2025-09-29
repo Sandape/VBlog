@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="org.sang.mapper.LoginLogMapper">
+    <resultMap id="LoginLogResultMap" type="org.sang.bean.LoginLog">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="username" column="username"/>
+        <result property="nickname" column="nickname"/>
+        <result property="ipAddress" column="ip_address"/>
+        <result property="userAgent" column="user_agent"/>
+        <result property="loginStatus" column="login_status"/>
+        <result property="loginTime" column="login_time"/>
+    </resultMap>
     
     <insert id="addLoginLog" parameterType="org.sang.bean.LoginLog" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO login_log (user_id, username, nickname, ip_address, login_status, login_time)
@@ -56,19 +66,20 @@
     <select id="getLoginLogCount" resultType="int">
         SELECT COUNT(*) FROM login_log WHERE user_id = #{uid}
     </select>
-    
+
     <select id="getAllLoginLogs" resultType="org.sang.bean.LoginLog">
-        SELECT 
+        SELECT
             id,
-            user_id as userId, 
-            username, 
-            nickname, 
-            ip_address as ipAddress, 
-            login_status as loginStatus, 
+            user_id as userId,
+            username,
+            nickname,
+            ip_address as ipAddress,
+            user_agent as userAgent,
+            login_status as loginStatus,
             login_time as loginTime
-        FROM login_log 
+        FROM login_log
         ORDER BY login_time DESC
-        LIMIT #{start}, #{count}
+            LIMIT #{offset}, #{limit}
     </select>
     
     <select id="getAllLoginLogCount" resultType="int">
@@ -106,7 +117,7 @@
         SELECT COUNT(*) FROM login_log WHERE username LIKE CONCAT('%', #{username}, '%')
     </select>
     
-    <select id="getLoginStatsByUser" resultType="java.util.Map">
+    <select id="getLoginStatsByUser" resultType="org.sang.bean.dto.LoginStatsDTO">
         SELECT 
             username,
             nickname,

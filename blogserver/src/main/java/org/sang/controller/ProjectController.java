@@ -119,11 +119,11 @@ public class ProjectController {
     }
 
     /**
-     * 获取用户所有项目列表（参与的+拥有的）
+     * 获取所有项目列表（用于Prompt生成器显示所有项目）
      */
     @GetMapping("/list")
-    public RespBean getAllUserProjects() {
-        List<Project> projects = projectService.getUserProjects();
+    public RespBean getAllProjects() {
+        List<Project> projects = projectService.getAllProjects();
         return RespBean.success("获取成功", projects);
     }
 

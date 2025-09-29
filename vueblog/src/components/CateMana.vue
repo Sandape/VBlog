@@ -219,7 +219,7 @@
     display: flex;
     flex-direction: column;
     padding-left: 5px;
-    background-color: #ececec;
+    background-color: #fff;
     margin-top: 20px;
     padding-top: 10px;
   }

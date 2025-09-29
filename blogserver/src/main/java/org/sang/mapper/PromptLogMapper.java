@@ -1,11 +1,11 @@
 package org.sang.mapper;
 
 import org.sang.bean.PromptLog;
+import org.sang.bean.dto.UsageStatsDTO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * AI解读请求日志Mapper接口
@@ -93,5 +93,5 @@ public interface PromptLogMapper {
      * 获取使用统计数据（按用户分组）
      * @return 统计数据
      */
-    List<Map<String, Object>> getUsageStatsByUser();
+    List<UsageStatsDTO> getUsageStatsByUser();
 }

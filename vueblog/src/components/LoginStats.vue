@@ -1,53 +1,75 @@
 <template>
   <div class="login-stats-container">
-    <div class="header-section">
+    <div class="title-section">
       <h2>登录统计</h2>
     </div>
 
     <div class="stats-content">
-      <div class="chart-section">
-        <h3>用户登录次数统计</h3>
-        <div id="loginChart" style="width: 100%; height: 400px;"></div>
-      </div>
-
       <div class="table-section">
         <h3>详细统计数据</h3>
-        <el-table
+        <DataTable
           :data="statsData"
-          v-loading="loading"
-          style="width: 100%"
-        >
-          <el-table-column prop="username" label="用户名" width="120"></el-table-column>
-          <el-table-column prop="nickname" label="昵称" width="120"></el-table-column>
-          <el-table-column prop="loginCount" label="登录次数" width="100" sortable></el-table-column>
-          <el-table-column prop="lastLoginTime" label="最后登录时间" width="180"></el-table-column>
-          <el-table-column prop="lastLoginIp" label="最后登录IP" width="130"></el-table-column>
-        </el-table>
+          :columns="columns"
+          :loading="loading"
+          :show-pagination="false"
+          :show-search="false"
+          :default-sort="{ prop: 'loginCount', order: 'descending' }"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import * as echarts from 'echarts'
 import axios from 'axios'
+import DataTable from './DataTable.vue'
 
 export default {
   name: 'LoginStats',
+  components: {
+    DataTable
+  },
   data() {
     return {
       statsData: [],
       loading: false,
-      chart: null
+      columns: [
+        {
+          prop: 'username',
+          label: '用户名',
+          width: 120,
+          sortable: true
+        },
+        {
+          prop: 'nickname',
+          label: '昵称',
+          width: 120,
+          sortable: true
+        },
+        {
+          prop: 'loginCount',
+          label: '登录次数',
+          width: 100,
+          sortable: true,
+          type: 'number'
+        },
+        {
+          prop: 'lastLoginTime',
+          label: '最后登录时间',
+          width: 180,
+          sortable: true
+        },
+        {
+          prop: 'lastLoginIp',
+          label: '最后登录IP',
+          width: 130,
+          sortable: true
+        }
+      ]
     }
   },
   mounted() {
     this.loadStats()
-  },
-  beforeDestroy() {
-    if (this.chart) {
-      this.chart.dispose()
-    }
   },
   methods: {
     loadStats() {
@@ -56,7 +78,6 @@ export default {
         this.loading = false
         if (resp && resp.data && resp.data.status === 'success') {
           this.statsData = resp.data.obj || []
-          this.renderChart()
         }
       }).catch(() => {
         this.loading = false
@@ -64,49 +85,6 @@ export default {
       })
     },
 
-    renderChart() {
-      this.$nextTick(() => {
-        const chartDom = document.getElementById('loginChart')
-        if (!chartDom) return
-
-        this.chart = echarts.init(chartDom)
-        
-        const usernames = this.statsData.map(item => item.username)
-        const loginCounts = this.statsData.map(item => item.loginCount)
-
-        const option = {
-          title: {
-            text: '用户登录次数统计',
-            left: 'center'
-          },
-          tooltip: {
-            trigger: 'axis',
-            axisPointer: {
-              type: 'shadow'
-            }
-          },
-          xAxis: {
-            type: 'category',
-            data: usernames,
-            axisLabel: {
-              rotate: 45
-            }
-          },
-          yAxis: {
-            type: 'value'
-          },
-          series: [{
-            data: loginCounts,
-            type: 'bar',
-            itemStyle: {
-              color: '#409EFF'
-            }
-          }]
-        }
-
-        this.chart.setOption(option)
-      })
-    }
   }
 }
 </script>
@@ -139,14 +117,14 @@ export default {
   gap: 20px;
 }
 
-.chart-section, .table-section {
+.table-section {
   background: white;
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.chart-section h3, .table-section h3 {
+.table-section h3 {
   margin: 0 0 20px 0;
   color: #303133;
   font-size: 16px;

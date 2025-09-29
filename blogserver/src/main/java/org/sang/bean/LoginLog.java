@@ -30,4 +30,27 @@ public class LoginLog {
         this.ipAddress = ipAddress;
         this.loginStatus = loginStatus;
     }
+
+    public LoginLog(Long id, Long userId, String username, String nickname, String ipAddress,
+        String userAgent, String loginStatus, Timestamp loginTime) {
+        this.id = id;
+        this.userId = userId;
+        this.username = username;
+        this.nickname = nickname;
+        this.ipAddress = ipAddress;
+        this.userAgent = userAgent;
+        this.loginStatus = loginStatus;
+        this.loginTime = loginTime;
+    }
+
+    public LoginLog(Long id, Long userId, String username, String ipAddress,
+        String userAgent, String loginStatus, Timestamp loginTime) {
+        this.id = id;
+        this.userId = userId;
+        this.username = username;
+        this.ipAddress = ipAddress;
+        this.userAgent = userAgent;
+        this.loginStatus = loginStatus;
+        this.loginTime = loginTime;
+    }
 }

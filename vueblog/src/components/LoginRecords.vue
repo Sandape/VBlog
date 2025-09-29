@@ -1,62 +1,36 @@
 <template>
   <div class="login-records-container">
-    <div class="header-section">
+    <div class="title-section">
       <h2>登录记录</h2>
-      <div class="search-section">
-        <el-input
-          v-model="searchUsername"
-          placeholder="输入用户名搜索"
-          style="width: 200px; margin-right: 10px;"
-          @keyup.enter="searchRecords"
-        >
-          <el-button slot="append" icon="el-icon-search" @click="searchRecords"></el-button>
-        </el-input>
-        <el-button @click="loadAllRecords" type="primary" plain>显示全部</el-button>
-      </div>
     </div>
 
-    <div class="table-container">
-      <el-table
-        :data="records"
-        v-loading="loading"
-        style="width: 100%"
-      >
-        <el-table-column prop="username" label="用户名" width="120"></el-table-column>
-        <el-table-column prop="nickname" label="昵称" width="120"></el-table-column>
-        <el-table-column prop="ipAddress" label="IP地址" width="130"></el-table-column>
-        <el-table-column prop="loginStatus" label="状态" width="80">
-          <template slot-scope="scope">
-            <el-tag :type="scope.row.loginStatus === 'SUCCESS' ? 'success' : 'danger'">
-              {{ scope.row.loginStatus === 'SUCCESS' ? '成功' : '失败' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="loginTime" label="登录时间" width="180">
-          <template slot-scope="scope">
-            {{ formatDate(scope.row.loginTime) }}
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
-
-    <div class="pagination-container">
-      <el-pagination
-        @current-change="handlePageChange"
-        :current-page="currentPage"
-        :page-size="pageSize"
-        :total="totalCount"
-        layout="total, prev, pager, next"
-      >
-      </el-pagination>
-    </div>
+    <DataTable
+      :data="records"
+      :columns="columns"
+      :loading="loading"
+      :show-pagination="true"
+      :current-page="currentPage"
+      :page-size="pageSize"
+      :total="totalCount"
+      :search-placeholder="'输入用户名搜索'"
+      :search-fields="['username', 'nickname']"
+      :default-sort="{ prop: 'loginTime', order: 'descending' }"
+      @page-change="handlePageChange"
+      @size-change="handleSizeChange"
+      @search="handleSearch"
+    />
   </div>
 </template>
 
 <script>
 import axios from 'axios'
+import DataTable from './DataTable.vue'
 
 export default {
   name: 'LoginRecords',
+  components: {
+    DataTable
+  },
   data() {
     return {
       records: [],
@@ -64,7 +38,45 @@ export default {
       currentPage: 1,
       pageSize: 10,
       totalCount: 0,
-      searchUsername: ''
+      searchUsername: '',
+      columns: [
+        {
+          prop: 'username',
+          label: '用户名',
+          width: 120,
+          sortable: true
+        },
+        {
+          prop: 'nickname',
+          label: '昵称',
+          width: 120,
+          sortable: true
+        },
+        {
+          prop: 'ipAddress',
+          label: 'IP地址',
+          width: 130,
+          sortable: true
+        },
+        {
+          prop: 'loginStatus',
+          label: '状态',
+          width: 80,
+          sortable: true,
+          type: 'status',
+          statusMap: {
+            'SUCCESS': { type: 'success', text: '成功' },
+            'FAILED': { type: 'danger', text: '失败' }
+          }
+        },
+        {
+          prop: 'loginTime',
+          label: '登录时间',
+          width: 180,
+          sortable: true,
+          type: 'datetime'
+        }
+      ]
     }
   },
   mounted() {
@@ -94,31 +106,21 @@ export default {
       })
     },
 
-    searchRecords() {
-      this.currentPage = 1
-      this.loadRecords()
-    },
-
-    loadAllRecords() {
-      this.searchUsername = ''
-      this.currentPage = 1
-      this.loadRecords()
-    },
-
     handlePageChange(page) {
       this.currentPage = page
       this.loadRecords()
     },
 
-    formatDate(date) {
-      if (!date) return '-'
-      const d = new Date(date)
-      return d.getFullYear() + '-' + 
-             String(d.getMonth() + 1).padStart(2, '0') + '-' + 
-             String(d.getDate()).padStart(2, '0') + ' ' +
-             String(d.getHours()).padStart(2, '0') + ':' + 
-             String(d.getMinutes()).padStart(2, '0') + ':' + 
-             String(d.getSeconds()).padStart(2, '0')
+    handleSizeChange(size) {
+      this.pageSize = size
+      this.currentPage = 1
+      this.loadRecords()
+    },
+
+    handleSearch(searchText) {
+      this.searchUsername = searchText || ''
+      this.currentPage = 1
+      this.loadRecords()
     }
   }
 }
@@ -131,44 +133,16 @@ export default {
   min-height: 100vh;
 }
 
-.header-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.title-section {
   margin-bottom: 20px;
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.header-section h2 {
+.title-section h2 {
   margin: 0;
   color: #303133;
   font-size: 20px;
   font-weight: 600;
-}
-
-.search-section {
-  display: flex;
-  align-items: center;
-}
-
-.table-container {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  margin-bottom: 20px;
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: center;
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  text-align: center;
 }
 </style>
 

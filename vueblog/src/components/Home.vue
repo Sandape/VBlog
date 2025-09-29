@@ -18,7 +18,7 @@
         <el-menu
           default-active="0"
           class="el-menu-vertical-demo" style="background-color: #ECECEC" router>
-          <template v-for="(item,index) in this.$router.options.routes" v-if="!item.hidden && (item.name !== '用户管理' && item.name !== '数据统计' || isAdmin)">
+          <template v-for="(item,index) in this.$router.options.routes" v-if="!item.hidden && (item.name !== '用户管理' || isAdmin)">
             <el-submenu :index="index+''" v-if="item.children.length>1" :key="index">
               <template slot="title">
                 <i :class="item.iconCls"></i>
@@ -85,7 +85,7 @@
       });
 
       // 检查用户是否为管理员
-      getRequest("/isadmin").then(function (msg) {
+      getRequest("/isAdmin").then(function (msg) {
         _this.isAdmin = msg.data;
       }, function (msg) {
         _this.isAdmin = false;

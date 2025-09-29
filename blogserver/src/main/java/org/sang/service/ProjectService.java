@@ -197,6 +197,14 @@ public class ProjectService {
     }
 
     /**
+     * 获取所有项目列表（用于Prompt生成器显示所有项目）
+     */
+    public List<Project> getAllProjects() {
+        Long userId = Util.getCurrentUser().getId();
+        return projectMapper.getAllProjects(userId);
+    }
+
+    /**
      * 搜索项目
      */
     public List<Project> searchProjects(String projectName) {

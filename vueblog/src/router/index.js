@@ -149,6 +149,7 @@ export default new Router({
       path: '/home',
       component: Home,
       name: '用户管理',
+      hidden: true,
       children: [
         {
           path: '/user',
@@ -185,7 +186,7 @@ export default new Router({
           iconCls: 'fa fa-pie-chart',
           name: '登录统计',
           component: LoginStats,
-          hidden: true
+          hidden: false
         }, {
           path: '/usageRecords',
           iconCls: 'fa fa-history',
@@ -196,7 +197,7 @@ export default new Router({
           iconCls: 'fa fa-bar-chart',
           name: '使用统计',
           component: UsageStats,
-          hidden: true
+          hidden: false
         }
       ]
     }

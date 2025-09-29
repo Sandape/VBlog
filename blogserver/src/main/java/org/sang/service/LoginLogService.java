@@ -1,5 +1,6 @@
 package org.sang.service;
 
+import java.sql.Timestamp;
 import org.sang.bean.LoginLog;
 import org.sang.bean.User;
 import org.sang.mapper.LoginLogMapper;
@@ -30,6 +31,7 @@ public class LoginLogService {
     public void recordLoginLog(Long userId, String username, String nickname, String ipAddress, String loginStatus) {
         try {
             LoginLog loginLog = new LoginLog(userId, username, nickname, ipAddress, loginStatus);
+            loginLog.setLoginTime(new Timestamp(new Date().getTime()));
             loginLogMapper.addLoginLog(loginLog);
         } catch (Exception e) {
             System.err.println("记录登录日志失败: " + e.getMessage());

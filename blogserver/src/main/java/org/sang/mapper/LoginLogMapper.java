@@ -3,6 +3,7 @@ package org.sang.mapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.sang.bean.LoginLog;
+import org.sang.bean.dto.LoginStatsDTO;
 
 import java.util.List;
 import java.util.Map;
@@ -52,7 +53,7 @@ public interface LoginLogMapper {
     /**
      * 获取所有登录日志列表
      */
-    List<LoginLog> getAllLoginLogs(@Param("start") Integer start, @Param("count") Integer count);
+    List<LoginLog> getAllLoginLogs(@Param("offset") Integer start, @Param("limit") Integer count);
 
     /**
      * 获取所有登录日志总数
@@ -82,5 +83,5 @@ public interface LoginLogMapper {
     /**
      * 获取登录统计数据（按用户分组）
      */
-    List<Map<String, Object>> getLoginStatsByUser();
+    List<LoginStatsDTO> getLoginStatsByUser();
 }

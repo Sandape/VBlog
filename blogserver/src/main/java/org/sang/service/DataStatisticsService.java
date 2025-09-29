@@ -2,7 +2,11 @@ package org.sang.service;
 
 import org.sang.bean.LoginLog;
 import org.sang.bean.PromptLog;
-import org.sang.bean.dto.*;
+import org.sang.bean.dto.LoginRecordDTO;
+import org.sang.bean.dto.LoginStatsDTO;
+import org.sang.bean.dto.PageResultDTO;
+import org.sang.bean.dto.UsageRecordDTO;
+import org.sang.bean.dto.UsageStatsDTO;
 import org.sang.mapper.LoginLogMapper;
 import org.sang.mapper.PromptLogMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 数据统计服务类
@@ -61,20 +64,7 @@ public class DataStatisticsService {
      * 获取登录统计数据
      */
     public List<LoginStatsDTO> getLoginStatistics() {
-        List<Map<String, Object>> statsData = loginLogMapper.getLoginStatsByUser();
-        List<LoginStatsDTO> result = new ArrayList<>();
-
-        for (Map<String, Object> data : statsData) {
-            LoginStatsDTO dto = new LoginStatsDTO();
-            dto.setUsername((String) data.get("username"));
-            dto.setNickname((String) data.get("nickname"));
-            dto.setLoginCount((Integer) data.get("loginCount"));
-            dto.setLastLoginTime((String) data.get("lastLoginTime"));
-            dto.setLastLoginIp((String) data.get("lastLoginIp"));
-            result.add(dto);
-        }
-
-        return result;
+        return loginLogMapper.getLoginStatsByUser();
     }
 
     /**
@@ -116,21 +106,7 @@ public class DataStatisticsService {
      * 获取使用统计数据
      */
     public List<UsageStatsDTO> getUsageStatistics() {
-        List<Map<String, Object>> statsData = promptLogMapper.getUsageStatsByUser();
-        List<UsageStatsDTO> result = new ArrayList<>();
-
-        for (Map<String, Object> data : statsData) {
-            UsageStatsDTO dto = new UsageStatsDTO();
-            dto.setUserId(Long.valueOf((Integer) data.get("userId")));
-            dto.setUsername((String) data.get("username"));
-            dto.setNickname((String) data.get("nickname"));
-            dto.setUsageCount((Integer) data.get("usageCount"));
-            dto.setLastUsageTime((String) data.get("lastUsageTime"));
-            dto.setMostUsedProject((String) data.get("mostUsedProject"));
-            result.add(dto);
-        }
-
-        return result;
+        return promptLogMapper.getUsageStatsByUser();
     }
 
     /**

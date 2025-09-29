@@ -135,7 +135,7 @@
     </select>
 
     <!-- 获取使用统计数据（按用户分组） -->
-    <select id="getUsageStatsByUser" resultType="java.util.Map">
+    <select id="getUsageStatsByUser" resultType="org.sang.bean.dto.UsageStatsDTO">
         SELECT 
             u.id as userId,
             u.username,

@@ -21,8 +21,9 @@
       
       <el-row :gutter="20" v-loading="loading">
         <el-col :span="8" v-for="project in filteredProjects" :key="project.id">
-          <el-card 
-            class="project-card" 
+          <el-card
+            class="project-card"
+            :class="{ 'no-permission': !canAccessProject(project) }"
             :body-style="{ padding: '20px' }"
             @click.native="selectProject(project)"
             shadow="hover">
@@ -30,6 +31,18 @@
               <h3>{{ project.projectName }}</h3>
               <p class="project-code">编码: {{ project.projectCode }}</p>
               <p class="project-owner">拥有者: {{ project.ownerNickname }}</p>
+
+              <!-- 权限状态 -->
+              <div class="project-permission" v-if="!canAccessProject(project)">
+                <el-tag type="info" size="mini">需要权限</el-tag>
+              </div>
+              <div v-else-if="project.userRole === 1">
+                <el-tag type="primary" size="mini">项目拥有者</el-tag>
+              </div>
+              <div v-else>
+                <el-tag type="success" size="mini">项目成员</el-tag>
+              </div>
+
               <div class="project-config" v-if="project.apiKey">
                 <el-tag type="success" size="mini">已配置AI</el-tag>
                 <span class="model-name">{{ project.modelName }}</span>
@@ -582,10 +595,15 @@ export default {
     this.getCategories()
   },
   methods: {
+    canAccessProject(project) {
+      // 用户是项目成员（userRole > 0）或项目拥有者都可以访问
+      return project.userRole > 0 || project.ownerId === this.$store.state.user.id
+    },
+
     async loadProjects() {
       this.loading = true
       try {
-        const response = await getRequest('/project/list')
+        const response = await getRequest('/project/my-projects')
         if (response.data.status === 'success') {
           this.allProjects = response.data.obj || []
           this.filterProjects()
@@ -611,10 +629,17 @@ export default {
     },
     
     selectProject(project) {
+      // 检查用户是否有权限操作该项目（必须是项目成员或项目拥有者）
+      if (project.userRole === 0 && project.ownerId !== this.$store.state.user.id) {
+        this.$message.warning('您没有权限操作此项目，请先加入该项目')
+        return
+      }
+
       if (!project.apiKey) {
         this.$message.warning('该项目未配置AI接口，无法使用Prompt生成功能')
         return
       }
+
       this.selectedProject = project
       this.resetForm()
       this.loadPromptLogs()
@@ -1168,6 +1193,16 @@ export default {
 
 .project-card:hover {
   transform: translateY(-2px);
+}
+
+.project-card.no-permission {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.project-card.no-permission:hover {
+  transform: none;
+  border-color: #DCDFE6;
 }
 
 .project-info h3 {

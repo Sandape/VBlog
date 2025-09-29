@@ -58,6 +58,11 @@ public interface ProjectMapper {
     List<Project> searchProjectsByName(@Param("projectName") String projectName, @Param("userId") Long userId);
 
     /**
+     * 获取所有项目列表（用于Prompt生成器显示所有项目）
+     */
+    List<Project> getAllProjects(@Param("userId") Long userId);
+
+    /**
      * 获取项目的SQL列表（仅用于异步更新）
      */
     String getProjectSqlListOnly(@Param("projectId") Long projectId);
