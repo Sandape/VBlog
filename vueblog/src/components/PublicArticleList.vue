@@ -14,25 +14,79 @@
       </div>
     </div>
 
-    <div class="article-list" v-loading="loading">
-      <div v-for="article in articles" :key="article.id" class="article-item" @click="viewArticle(article)">
-        <div class="article-header">
-          <h3 class="article-title">{{ article.title }}</h3>
-          <div class="article-meta">
-            <span class="author">{{ article.nickname }}</span>
-            <span class="category">{{ article.cateName }}</span>
-            <span class="time">{{ article.editTime | formatDateTime }}</span>
-            <span class="views">浏览 {{ article.pageView || 0 }}</span>
-          </div>
-        </div>
-        <div class="article-summary" v-html="article.summary"></div>
-        <div class="article-tags" v-if="article.tags && article.tags.length > 0">
-          <el-tag v-for="tag in article.tags" :key="tag.id" size="mini" type="info">{{ tag.tagName }}</el-tag>
-        </div>
-      </div>
+    <div class="article-table-container" v-loading="loading">
+      <el-table
+        :data="articles"
+        style="width: 100%"
+        :row-class-name="tableRowClassName"
+        @row-click="viewArticle"
+        stripe
+        border>
+        <el-table-column
+          prop="title"
+          label="名称"
+          min-width="300"
+          show-overflow-tooltip>
+          <template slot-scope="scope">
+            <div class="article-title-cell">
+              <i class="el-icon-document article-icon"></i>
+              <span class="article-title-text">{{ scope.row.title }}</span>
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column
+          prop="nickname"
+          label="作者"
+          width="120"
+          align="center">
+        </el-table-column>
+
+        <el-table-column
+          prop="cateName"
+          label="分类"
+          width="100"
+          align="center">
+        </el-table-column>
+
+        <el-table-column
+          label="修改时间"
+          width="150"
+          align="center">
+          <template slot-scope="scope">
+            {{ scope.row.editTime | formatDateTime }}
+          </template>
+        </el-table-column>
+
+        <el-table-column
+          label="浏览量"
+          width="100"
+          align="center">
+          <template slot-scope="scope">
+            {{ scope.row.pageView || 0 }}
+          </template>
+        </el-table-column>
+
+        <el-table-column
+          label="标签"
+          min-width="200">
+          <template slot-scope="scope">
+            <div class="article-tags-cell">
+              <el-tag
+                v-for="tag in scope.row.tags"
+                :key="tag.id"
+                size="mini"
+                type="info"
+                class="article-tag">
+                {{ tag.tagName }}
+              </el-tag>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
 
       <div v-if="articles.length === 0 && !loading" class="no-articles">
-        <p>暂无Prompt</p>
+        <el-empty description="暂无Prompt" :image-size="80"></el-empty>
       </div>
     </div>
 
@@ -67,6 +121,9 @@ export default {
     this.loadArticles(1, this.pageSize)
   },
   methods: {
+    tableRowClassName({row, rowIndex}) {
+      return 'article-table-row'
+    },
     loadArticles(page, count) {
       this.loading = true
       const url = `/article/public/all?page=${page}&count=${count}&keywords=${encodeURIComponent(this.keywords || '')}`
@@ -127,85 +184,101 @@ export default {
   align-items: center;
 }
 
-.article-list {
-  min-height: 300px;
-}
-
-.article-item {
+.article-table-container {
+  background: #fff;
   border: 1px solid #e4e7ed;
   border-radius: 4px;
-  padding: 15px;
-  margin-bottom: 15px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.article-item:hover {
-  border-color: #20a0ff;
-  box-shadow: 0 2px 8px 0 rgba(32, 160, 255, 0.1);
+/* 自定义表格样式 */
+:deep(.el-table) {
+  border-radius: 4px;
 }
 
-.article-header {
-  margin-bottom: 12px;
-}
-
-.article-title {
-  margin: 0 0 8px 0;
-  color: #303133;
-  font-size: 16px;
+:deep(.el-table th) {
+  background-color: #f5f7fa;
+  color: #606266;
   font-weight: 500;
-  line-height: 1.4;
+  border-bottom: 1px solid #e4e7ed;
+  padding: 12px 0;
 }
 
-.article-title:hover {
+:deep(.el-table td) {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 10px 0;
+  color: #606266;
+}
+
+:deep(.el-table--border) {
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+}
+
+:deep(.el-table--border th),
+:deep(.el-table--border td) {
+  border-right: 1px solid #e4e7ed;
+}
+
+:deep(.el-table--border th:last-child),
+:deep(.el-table--border td:last-child) {
+  border-right: none;
+}
+
+/* 行悬停效果 */
+.article-table-row:hover {
+  background-color: #f5f7fa;
+  cursor: pointer;
+}
+
+/* 标题列样式 */
+.article-title-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.article-icon {
+  color: #20a0ff;
+  font-size: 16px;
+}
+
+.article-title-text {
+  color: #303133;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.article-title-text:hover {
   color: #20a0ff;
 }
 
-.article-meta {
+/* 标签列样式 */
+.article-tags-cell {
   display: flex;
-  align-items: center;
-  font-size: 12px;
-  color: #909399;
-  gap: 15px;
   flex-wrap: wrap;
+  gap: 4px;
 }
 
-.article-summary {
-  color: #606266;
-  line-height: 1.5;
-  margin-bottom: 10px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.article-summary >>> * {
+.article-tag {
   margin: 0;
-  padding: 0;
+  border-radius: 12px;
+  font-size: 11px;
+  padding: 2px 8px;
 }
 
-.article-tags {
-  margin-top: 8px;
-}
-
-.article-tags .el-tag {
-  margin-right: 6px;
-  margin-bottom: 4px;
-}
-
+/* 空状态样式 */
 .no-articles {
   text-align: center;
-  padding: 40px 0;
+  padding: 60px 20px;
+}
+
+:deep(.el-empty__description) {
   color: #909399;
-}
-
-.no-articles p {
   font-size: 14px;
-  margin: 0;
 }
 
+/* 分页样式 */
 .pagination {
   display: flex;
   justify-content: center;
@@ -231,18 +304,34 @@ export default {
     flex: 1;
   }
 
-  .article-meta {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
+  .article-table-container {
+    margin: 0 -5px;
   }
 
-  .article-item {
-    padding: 12px;
+  :deep(.el-table th),
+  :deep(.el-table td) {
+    padding: 8px 0;
   }
 
-  .article-title {
-    font-size: 15px;
+  .article-title-cell {
+    gap: 6px;
   }
+
+  .article-icon {
+    font-size: 14px;
+  }
+
+  .article-title-text {
+    font-size: 14px;
+  }
+}
+
+/* 表格斑马纹样式增强 */
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td) {
+  background-color: #fafafa;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped:hover td) {
+  background-color: #f0f8ff;
 }
 </style>

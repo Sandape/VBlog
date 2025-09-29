@@ -7,49 +7,174 @@
     margin-bottom: 0px;
     justify-content: space-between;
   }
+
+  /* 自定义表格样式 */
+  .el-table {
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .el-table th {
+    background-color: #f5f7fa;
+    color: #606266;
+    font-weight: 500;
+    border-bottom: 1px solid #e4e7ed;
+    padding: 12px 0;
+  }
+
+  .el-table td {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 10px 0;
+    color: #606266;
+  }
+
+  .el-table--border {
+    border: 1px solid #e4e7ed;
+    border-radius: 4px;
+  }
+
+  .el-table--border th,
+  .el-table--border td {
+    border-right: 1px solid #e4e7ed;
+  }
+
+  .el-table--border th:last-child,
+  .el-table--border td:last-child {
+    border-right: none;
+  }
+
+  /* 行悬停效果 */
+  .el-table tbody tr:hover {
+    background-color: #f5f7fa;
+    cursor: pointer;
+  }
+
+  /* 标题列样式 */
+  .article-title-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .article-icon {
+    color: #20a0ff;
+    font-size: 16px;
+  }
+
+  .article-title-text {
+    color: #303133;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    cursor: pointer;
+  }
+
+  .article-title-text:hover {
+    color: #20a0ff;
+  }
+
+  /* 表格斑马纹样式增强 */
+  .el-table--striped .el-table__body tr.el-table__row--striped td {
+    background-color: #fafafa;
+  }
+
+  .el-table--striped .el-table__body tr.el-table__row--striped:hover td {
+    background-color: #f0f8ff;
+  }
+
+  /* 搜索框样式 */
+  .search-container {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 15px;
+  }
+
+  .search-input {
+    width: 400px;
+  }
+
+  /* 响应式设计 */
+  @media (max-width: 768px) {
+    .search-container {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .search-input {
+      width: 100%;
+    }
+
+    .el-table th,
+    .el-table td {
+      padding: 8px 0;
+    }
+
+    .article-title-cell {
+      gap: 6px;
+    }
+
+    .article-icon {
+      font-size: 14px;
+    }
+
+    .article-title-text {
+      font-size: 14px;
+    }
+  }
 </style>
 <template>
   <div>
-    <div style="display: flex;justify-content: flex-start">
+    <div class="search-container">
       <el-input
         placeholder="通过标题搜索该分类下的博客..."
         prefix-icon="el-icon-search"
-        v-model="keywords" style="width: 400px" size="mini">
+        v-model="keywords"
+        class="search-input"
+        size="mini"
+        @keyup.enter.native="searchClick">
       </el-input>
-      <el-button type="primary" icon="el-icon-search" size="mini" style="margin-left: 3px" @click="searchClick">搜索
+      <el-button type="primary" icon="el-icon-search" size="mini" style="margin-left: 8px" @click="searchClick">搜索
       </el-button>
     </div>
-    <!--<div style="width: 100%;height: 1px;background-color: #20a0ff;margin-top: 8px;margin-bottom: 0px"></div>-->
     <el-table
       ref="multipleTable"
       :data="articles"
       tooltip-effect="dark"
-      style="width: 100%;overflow-x: hidden; overflow-y: hidden;"
-      max-height="390"
-      @selection-change="handleSelectionChange" v-loading="loading">
+      style="width: 100%"
+      border
+      stripe
+      @selection-change="handleSelectionChange"
+      v-loading="loading">
       <el-table-column
         type="selection"
         width="35" align="left" v-if="showEdit || showDelete">
       </el-table-column>
       <el-table-column
         label="标题"
-        width="400" align="left">
-        <template slot-scope="scope"><span style="color: #409eff;cursor: pointer" @click="itemClick(scope.row)">{{ scope.row.title}}</span>
+        min-width="300" align="left">
+        <template slot-scope="scope">
+          <div class="article-title-cell">
+            <i class="el-icon-document article-icon"></i>
+            <span class="article-title-text" @click="itemClick(scope.row)">{{ scope.row.title}}</span>
+          </div>
         </template>
       </el-table-column>
       <el-table-column
-        label="最近编辑时间" width="140" align="left">
+        label="最近编辑时间"
+        width="150"
+        align="center">
         <template slot-scope="scope">{{ scope.row.editTime | formatDateTime}}</template>
       </el-table-column>
       <el-table-column
         prop="nickname"
         label="作者"
-        width="120" align="left">
+        width="100"
+        align="center">
       </el-table-column>
       <el-table-column
         prop="cateName"
         label="所属分类"
-        width="120" align="left">
+        width="120"
+        align="center">
       </el-table-column>
       <el-table-column label="操作" align="left" v-if="showEdit || showDelete">
         <template slot-scope="scope">

@@ -2,9 +2,12 @@
   <div>
     <div class="create-header">
       <h2>{{ isEdit ? '编辑项目' : '创建项目' }}</h2>
+      <p style="color: #666;">{{ isEdit ? '修改项目信息和配置' : '创建新项目并配置AI服务参数' }}</p>
     </div>
-    
-    <el-form :model="projectForm" :rules="rules" ref="projectForm" label-width="140px" style="max-width: 800px;">
+
+    <el-card style="max-width: 650px; margin: 0 auto;">
+      <div class="create-form">
+        <el-form :model="projectForm" :rules="rules" ref="projectForm" label-width="130px">
       <el-form-item label="项目名称" prop="projectName">
         <el-input v-model="projectForm.projectName" placeholder="请输入项目名称"></el-input>
       </el-form-item>
@@ -19,42 +22,65 @@
       
       <el-form-item label="API Key" prop="apiKey">
         <el-input v-model="projectForm.apiKey" placeholder="请输入API Key" show-password></el-input>
-        <div class="form-tip">用于调用AI服务的API密钥</div>
       </el-form-item>
-      
+
       <el-form-item label="API URL" prop="apiUrl">
         <el-input v-model="projectForm.apiUrl" placeholder="请输入API URL"></el-input>
-        <div class="form-tip">AI服务的API地址</div>
       </el-form-item>
-      
+
       <el-form-item label="Model Name" prop="modelName">
         <el-input v-model="projectForm.modelName" placeholder="请输入模型名称"></el-input>
-        <div class="form-tip">使用的AI模型名称，如：gpt-3.5-turbo</div>
       </el-form-item>
-      
+
       <el-form-item label="示例Mapper路径" prop="exampleMapperPath">
         <el-input v-model="projectForm.exampleMapperPath" placeholder="请输入示例Mapper类路径"></el-input>
-        <div class="form-tip">如：com.example.mapper.UserMapper</div>
       </el-form-item>
-      
+
       <el-form-item label="示例实体类路径" prop="exampleEntityPath">
         <el-input v-model="projectForm.exampleEntityPath" placeholder="请输入示例实体类路径"></el-input>
-        <div class="form-tip">如：com.example.entity.User</div>
       </el-form-item>
-      
+
       <el-form-item label="示例接口路径" prop="exampleInterfacePath">
         <el-input v-model="projectForm.exampleInterfacePath" placeholder="请输入示例接口路径"></el-input>
-        <div class="form-tip">如：com.example.controller.UserController</div>
-      </el-form-item>
-      
-      <el-form-item>
-        <el-button type="primary" @click="submitForm" :loading="submitting">
-          {{ isEdit ? '更新项目' : '创建项目' }}
-        </el-button>
-        <el-button @click="resetForm">重置</el-button>
-        <el-button @click="goBack">返回</el-button>
       </el-form-item>
     </el-form>
+
+    <!-- 项目预览 -->
+    <div v-if="projectPreview" class="project-preview">
+      <el-divider>项目预览</el-divider>
+      <div class="preview-content">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <div class="preview-item">
+              <label>项目名称：</label>
+              <span>{{ projectPreview.projectName }}</span>
+            </div>
+          </el-col>
+          <el-col :span="12">
+            <div class="preview-item">
+              <label>AI模型：</label>
+              <span>{{ projectPreview.modelName || '未配置' }}</span>
+            </div>
+          </el-col>
+        </el-row>
+        <div class="preview-item" style="margin-top: 15px;">
+          <label>开发规范预览：</label>
+          <span style="display: block; margin-top: 5px; color: #666;">
+            {{ projectPreview.developmentSpec ? (projectPreview.developmentSpec.length > 50 ? projectPreview.developmentSpec.substring(0, 50) + '...' : projectPreview.developmentSpec) : '暂无开发规范' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="create-actions">
+      <el-button type="primary" @click="submitForm" :loading="submitting" style="margin-right: 10px;">
+        {{ isEdit ? '更新项目' : '创建项目' }}
+      </el-button>
+      <el-button @click="resetForm" style="margin-right: 10px;">重置</el-button>
+      <el-button @click="goBack">返回</el-button>
+    </div>
+      </div>
+    </el-card>
 
     <!-- 创建成功对话框 -->
     <el-dialog title="项目创建成功" :visible.sync="successDialogVisible" width="500px" :close-on-click-modal="false">
@@ -76,6 +102,7 @@
         </div>
       </div>
     </el-dialog>
+
   </div>
 </template>
 
@@ -106,7 +133,16 @@ export default {
       },
       submitting: false,
       successDialogVisible: false,
-      createdProjectCode: ''
+      createdProjectCode: '',
+      projectPreview: null
+    }
+  },
+  watch: {
+    projectForm: {
+      handler() {
+        this.updateProjectPreview()
+      },
+      deep: true
     }
   },
   mounted() {
@@ -115,6 +151,8 @@ export default {
       this.isEdit = true
       this.projectId = this.$route.query.id
       this.loadProjectData()
+    } else {
+      this.updateProjectPreview()
     }
   },
   methods: {
@@ -192,8 +230,22 @@ export default {
       })
     },
     
+    updateProjectPreview() {
+      // 当项目名称不为空时显示预览
+      if (this.projectForm.projectName.trim()) {
+        this.projectPreview = {
+          projectName: this.projectForm.projectName,
+          modelName: this.projectForm.modelName,
+          developmentSpec: this.projectForm.developmentSpec
+        }
+      } else {
+        this.projectPreview = null
+      }
+    },
+
     resetForm() {
       this.$refs.projectForm.resetFields()
+      this.projectPreview = null
     },
     
     goBack() {
@@ -228,16 +280,37 @@ export default {
 
 <style scoped>
 .create-header {
+  text-align: center;
   margin-bottom: 30px;
 }
 
-.form-tip {
-  font-size: 12px;
-  color: #999;
-  margin-top: 5px;
+.create-form {
+  padding: 20px;
 }
 
-.el-form-item {
-  margin-bottom: 25px;
+
+.project-preview {
+  margin: 20px 0;
 }
+
+.preview-content {
+  background-color: #f5f7fa;
+  padding: 15px;
+  border-radius: 4px;
+}
+
+.preview-item {
+  margin-bottom: 10px;
+}
+
+.preview-item label {
+  font-weight: bold;
+  color: #333;
+}
+
+.create-actions {
+  text-align: center;
+  margin-top: 30px;
+}
+
 </style>

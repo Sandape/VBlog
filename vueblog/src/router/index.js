@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import Login from '@/components/Login'
+import Register from '@/components/Register'
 import Home from '@/components/Home'
 import ArticleList from '@/components/ArticleList'
 import CateMana from '@/components/CateMana'
@@ -30,6 +31,11 @@ export default new Router({
       name: '登录',
       hidden: true,
       component: Login
+    }, {
+      path: '/register',
+      name: '注册',
+      hidden: true,
+      component: Register
     }, {
       path: '/home',
       name: '',

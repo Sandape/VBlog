@@ -17,16 +17,12 @@
         <el-tab-pane label="博客管理" name="blogmana" v-if="isAdmin">
           <blog_table state="-2" :showEdit="false" :showDelete="true" :showRestore="false" :activeName="activeName"></blog_table>
         </el-tab-pane>
-        <el-tab-pane label="博客配置" name="blogcfg">
-          <blog_cfg></blog_cfg>
-        </el-tab-pane>
       </el-tabs>
     </el-main>
   </el-container>
 </template>
 <script>
   import BlogTable from '@/components/BlogTable'
-  import BlogCfg from '@/components/BlogCfg'
   import {postRequest} from '../utils/api'
   import {putRequest} from '../utils/api'
   import {deleteRequest} from '../utils/api'
@@ -52,8 +48,7 @@
       }
     },
     components: {
-      'blog_table': BlogTable,
-      'blog_cfg': BlogCfg
+      'blog_table': BlogTable
     }
   };
 </script>

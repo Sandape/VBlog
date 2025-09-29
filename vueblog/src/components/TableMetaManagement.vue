@@ -64,18 +64,24 @@
           <el-card class="table-meta-card">
             <div slot="header" class="card-header">
               <span>表元列表</span>
-              <el-button type="primary" @click="showAddDialog" icon="el-icon-plus">添加表元</el-button>
+              <div class="header-buttons">
+                <el-button type="primary" @click="refreshTableMeta" icon="el-icon-refresh" size="small">刷新</el-button>
+                <el-button type="primary" @click="showAddDialog" icon="el-icon-plus">添加表元</el-button>
+              </div>
             </div>
 
-            <el-table :data="tableMetaList" style="width: 100%" v-loading="tableLoading">
-              <el-table-column prop="tableName" label="表名" width="200">
+            <el-table :data="tableMetaList" style="width: 100%" border stripe v-loading="tableLoading">
+              <el-table-column label="表名" min-width="200">
                 <template slot-scope="scope">
-                  <el-link type="primary" @click="showTableDetail(scope.row)">
-                    {{ scope.row.tableName }}
-                  </el-link>
+                  <div class="table-name-cell">
+                    <i class="el-icon-data-board table-icon"></i>
+                    <el-link type="primary" @click="showTableDetail(scope.row)" class="table-name-text">
+                      {{ scope.row.tableName }}
+                    </el-link>
+                  </div>
                 </template>
               </el-table-column>
-              <el-table-column label="Entity路径" width="250">
+              <el-table-column label="Entity路径" width="250" align="center">
                 <template slot-scope="scope">
                   <div v-if="scope.row.entityPath && scope.row.entityPath.trim()" class="entity-path-display">
                     <el-tooltip :content="scope.row.entityPath" placement="top">
@@ -87,7 +93,7 @@
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="AI解析状态" width="150">
+              <el-table-column label="AI解析状态" width="150" align="center">
                 <template slot-scope="scope">
                   <el-tag
                     :type="getParseStatusType(scope.row.parseStatus)"
@@ -97,7 +103,7 @@
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="200" fixed="right">
+              <el-table-column label="操作" width="200" align="center" fixed="right">
                 <template slot-scope="scope">
                   <el-button size="mini" @click="showEditDialog(scope.row)" icon="el-icon-edit">编辑</el-button>
                   <el-button
@@ -259,6 +265,12 @@ export default {
     backToSelection() {
       this.selectedProject = null
       this.tableMetaList = []
+    },
+
+    refreshTableMeta() {
+      if (this.selectedProject) {
+        this.loadTableMeta()
+      }
     },
 
     loadTableMeta() {
@@ -484,12 +496,88 @@ export default {
   margin-bottom: 20px;
 }
 
+/* 现代化表格样式 */
+.el-table {
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.el-table th {
+  background-color: #f5f7fa;
+  color: #606266;
+  font-weight: 500;
+  border-bottom: 1px solid #e4e7ed;
+  padding: 12px 0;
+}
+
+.el-table td {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 10px 0;
+  color: #606266;
+}
+
+.el-table--border {
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+}
+
+.el-table--border th,
+.el-table--border td {
+  border-right: 1px solid #e4e7ed;
+}
+
+.el-table--border th:last-child,
+.el-table--border td:last-child {
+  border-right: none;
+}
+
+/* 行悬停效果 */
+.el-table tbody tr:hover {
+  background-color: #f5f7fa;
+  cursor: pointer;
+}
+
+/* 表名列样式 */
+.table-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-icon {
+  color: #20a0ff;
+  font-size: 16px;
+}
+
+.table-name-text {
+  color: #303133;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.table-name-text:hover {
+  color: #20a0ff;
+}
+
+/* 表格斑马纹样式增强 */
+.el-table--striped .el-table__body tr.el-table__row--striped td {
+  background-color: #fafafa;
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped:hover td {
+  background-color: #f0f8ff;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 8px;
+}
 
 .info-card, .help-card {
   margin-bottom: 20px;
@@ -530,5 +618,44 @@ export default {
   color: #67c23a;
   font-size: 12px;
   font-weight: 500;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .table-meta-management {
+    padding: 15px;
+  }
+
+  .management-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+
+  .management-header h2 {
+    margin: 0;
+    text-align: center;
+  }
+
+  .header-buttons {
+    justify-content: center;
+  }
+
+  .el-table th,
+  .el-table td {
+    padding: 8px 0;
+  }
+
+  .table-name-cell {
+    gap: 6px;
+  }
+
+  .table-icon {
+    font-size: 14px;
+  }
+
+  .table-name-text {
+    font-size: 14px;
+  }
 }
 </style>

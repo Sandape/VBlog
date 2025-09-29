@@ -3,17 +3,14 @@
     <el-header>
       <div class="home_title">iwhale Prompt</div>
       <div class="home_userinfoContainer">
-        <el-dropdown @command="handleCommand">
-  <span class="el-dropdown-link home_userinfo">
-    {{currentUserName}}<i class="el-icon-arrow-down el-icon--right home_userinfo"></i>
-  </span>
-          <el-dropdown-menu slot="dropdown">
-            <el-dropdown-item command="sysMsg">系统消息</el-dropdown-item>
-            <el-dropdown-item command="MyArticle">我的Prompt</el-dropdown-item>
-            <el-dropdown-item command="MyHome">个人主页</el-dropdown-item>
-            <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
-          </el-dropdown-menu>
-        </el-dropdown>
+        <span class="home_username">{{currentUserName}}</span>
+        <el-button
+          type="text"
+          class="logout_button"
+          @click="handleLogout"
+          icon="el-icon-switch-button">
+          退出登录
+        </el-button>
       </div>
     </el-header>
     <el-container>
@@ -21,7 +18,7 @@
         <el-menu
           default-active="0"
           class="el-menu-vertical-demo" style="background-color: #ECECEC" router>
-          <template v-for="(item,index) in this.$router.options.routes" v-if="!item.hidden">
+          <template v-for="(item,index) in this.$router.options.routes" v-if="!item.hidden && (item.name !== '用户管理' && item.name !== '数据统计' || isAdmin)">
             <el-submenu :index="index+''" v-if="item.children.length>1" :key="index">
               <template slot="title">
                 <i :class="item.iconCls"></i>
@@ -59,21 +56,19 @@
   import {getRequest} from '../utils/api'
   export default{
     methods: {
-      handleCommand(command){
+      handleLogout(){
         var _this = this;
-        if (command == 'logout') {
-          this.$confirm('注销登录吗?', '提示', {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
-            type: 'warning'
-          }).then(function () {
-            getRequest("/logout")
-            _this.currentUserName = '游客';
-            _this.$router.replace({path: '/'});
-          }, function () {
-            //取消
-          })
-        }
+        this.$confirm('注销登录吗?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(function () {
+          getRequest("/logout")
+          _this.currentUserName = '游客';
+          _this.$router.replace({path: '/'});
+        }, function () {
+          //取消
+        })
       }
     },
     mounted: function () {
@@ -88,10 +83,18 @@
       }, function (msg) {
         _this.currentUserName = '游客';
       });
+
+      // 检查用户是否为管理员
+      getRequest("/isadmin").then(function (msg) {
+        _this.isAdmin = msg.data;
+      }, function (msg) {
+        _this.isAdmin = false;
+      });
     },
     data(){
       return {
-        currentUserName: ''
+        currentUserName: '',
+        isAdmin: false
       }
     }
   }
@@ -105,13 +108,16 @@
     width: 100%;
   }
 
-  .el-header {
+  .home_container .el-header {
     background-color: #20a0ff;
     color: #333;
     text-align: center;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    height: 80px !important;
+    min-height: 80px !important;
+    max-height: 80px !important;
   }
 
   .el-aside {
@@ -130,13 +136,37 @@
     display: inline;
   }
 
-  .home_userinfo {
+  .home_username {
     color: #fff;
-    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    margin-right: 16px;
+  }
+
+  .logout_button {
+    color: #fff !important;
+    font-size: 14px;
+    padding: 10px 20px !important;
+    border: 1px solid #d73527 !important;
+    border-radius: 4px !important;
+    transition: all 0.3s ease !important;
+    background-color: #d73527 !important;
+    text-align: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 36px !important;
+  }
+
+  .logout_button:hover {
+    background-color: #c22e21 !important;
+    border-color: #c22e21 !important;
+    transform: translateY(-1px) !important;
   }
 
   .home_userinfoContainer {
-    display: inline;
+    display: flex;
+    align-items: center;
     margin-right: 20px;
   }
 </style>
