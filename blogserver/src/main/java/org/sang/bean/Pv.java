@@ -6,12 +6,13 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 分类表实体类
+ * 页面访问统计表实体类
  */
 @Getter
 @Setter
-public class Category {
+public class Pv {
     private Integer id;
-    private String cateName;
-    private Date date;
+    private Date countDate;
+    private Integer pv;
+    private Integer uid;
 }

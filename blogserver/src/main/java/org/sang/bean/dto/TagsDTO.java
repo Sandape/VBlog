@@ -1,15 +1,15 @@
-package org.sang.bean;
+package org.sang.bean.dto;
 
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 角色表实体类
+ * 标签DTO
  */
 @Getter
 @Setter
-public class Role {
+public class TagsDTO {
     private Integer id;
-    private String name;
+    private String tagName;
 }

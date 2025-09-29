@@ -1,5 +1,6 @@
 package org.sang.service;
 
+import java.sql.Date;
 import org.sang.bean.Category;
 import org.sang.mapper.CategoryMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,7 @@ public class CategoryService {
     }
 
     public int addCategory(Category category) {
-        category.setDate(new Timestamp(System.currentTimeMillis()));
+        category.setDate(new Date(System.currentTimeMillis()));
         return categoryMapper.addCategory(category);
     }
 }

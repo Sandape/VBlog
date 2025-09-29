@@ -1,17 +1,17 @@
-package org.sang.bean;
+package org.sang.bean.dto;
 
 import lombok.Data;
 import java.sql.Timestamp;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.stereotype.Service;
 
 /**
- * 项目表实体类
+ * 项目DTO
+ * 用于项目的增删改查操作
  */
 @Getter
 @Setter
-public class Project {
+public class ProjectDTO {
     private Long id;
     private String projectName;
     private String projectCode;
@@ -25,9 +25,6 @@ public class Project {
     private Long ownerId;
     private Timestamp createTime;
     private Timestamp updateTime;
-    private Integer status;
+    private Boolean status;
     private String sqlList;
-    private String ownerNickname;
-    private String userRole;
-    private Integer memberCount;
 }

@@ -5,11 +5,12 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 角色表实体类
+ * 文章标签关联表实体类
  */
 @Getter
 @Setter
-public class Role {
+public class ArticleTags {
     private Integer id;
-    private String name;
+    private Integer aid;
+    private Integer tid;
 }

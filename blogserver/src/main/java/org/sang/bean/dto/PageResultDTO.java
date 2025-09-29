@@ -1,11 +1,16 @@
 package org.sang.bean.dto;
 
+import lombok.Data;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * 分页结果DTO
  * 用于封装分页查询结果
  */
+@Getter
+@Setter
 public class PageResultDTO<T> {
     private List<T> records;
     private Integer totalCount;
@@ -22,47 +27,6 @@ public class PageResultDTO<T> {
         this.currentPage = currentPage;
         this.pageSize = pageSize;
         this.totalPages = (totalCount + pageSize - 1) / pageSize;
-    }
-
-    // Getters and Setters
-    public List<T> getRecords() {
-        return records;
-    }
-
-    public void setRecords(List<T> records) {
-        this.records = records;
-    }
-
-    public Integer getTotalCount() {
-        return totalCount;
-    }
-
-    public void setTotalCount(Integer totalCount) {
-        this.totalCount = totalCount;
-    }
-
-    public Integer getCurrentPage() {
-        return currentPage;
-    }
-
-    public void setCurrentPage(Integer currentPage) {
-        this.currentPage = currentPage;
-    }
-
-    public Integer getPageSize() {
-        return pageSize;
-    }
-
-    public void setPageSize(Integer pageSize) {
-        this.pageSize = pageSize;
-    }
-
-    public Integer getTotalPages() {
-        return totalPages;
-    }
-
-    public void setTotalPages(Integer totalPages) {
-        this.totalPages = totalPages;
     }
 }
 

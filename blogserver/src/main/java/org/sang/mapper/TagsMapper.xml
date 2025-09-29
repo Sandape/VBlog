@@ -24,4 +24,7 @@
             (#{aid},#{tagId})
         </foreach>
     </insert>
+    <select id="getTagsByAid" resultType="org.sang.bean.Tags">
+        SELECT t.* FROM tags t INNER JOIN article_tags ats ON t.id = ats.tid WHERE ats.aid = #{aid}
+    </select>
 </mapper>

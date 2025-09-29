@@ -1,4 +1,4 @@
-package org.sang.bean;
+package org.sang.bean.dto;
 
 import lombok.Data;
 import java.sql.Timestamp;
@@ -6,11 +6,12 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 登录日志表实体类
+ * 登录日志DTO
+ * 用于登录日志的查询和展示
  */
 @Getter
 @Setter
-public class LoginLog {
+public class LoginLogDTO {
     private Long id;
     private Long userId;
     private String username;
@@ -22,12 +23,4 @@ public class LoginLog {
     private Timestamp loginTime;
     private Timestamp logoutTime;
     private Long sessionDuration;
-
-    public LoginLog(Long userId, String username, String nickname, String ipAddress, String loginStatus) {
-        this.userId = userId;
-        this.username = username;
-        this.nickname = nickname;
-        this.ipAddress = ipAddress;
-        this.loginStatus = loginStatus;
-    }
 }

@@ -18,4 +18,7 @@
     <insert id="addCategory" parameterType="org.sang.bean.Category">
         INSERT INTO category SET date=#{date},cateName=#{cateName}
     </insert>
+    <select id="getCategoryById" parameterType="int" resultType="org.sang.bean.Category">
+        SELECT * FROM category WHERE id = #{id}
+    </select>
 </mapper>

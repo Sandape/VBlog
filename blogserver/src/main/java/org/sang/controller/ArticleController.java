@@ -1,9 +1,12 @@
 package org.sang.controller;
 
 import org.apache.commons.io.IOUtils;
-import org.sang.bean.Article;
 import org.sang.bean.RespBean;
-import org.sang.service.ArticleService;
+import org.sang.bean.dto.ArticleDTO;
+import org.sang.bean.dto.ArticleDetailDTO;
+import org.sang.bean.dto.ArticleQueryDTO;
+import org.sang.bean.dto.PageResultDTO;
+import org.sang.service.IArticleService;
 import org.sang.utils.Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -28,18 +31,18 @@ public class ArticleController {
     private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
 
     @Autowired
-    ArticleService articleService;
+    private IArticleService articleService;
 
     @Autowired
-    LoginLogService loginLogService;
+    private LoginLogService loginLogService;
 
     @RequestMapping(value = "/", method = RequestMethod.POST)
-    public RespBean addNewArticle(Article article) {
-        int result = articleService.addNewArticle(article);
+    public RespBean addNewArticle(ArticleDTO articleDTO) {
+        int result = articleService.addNewArticle(articleDTO);
         if (result == 1) {
-            return new RespBean("success", article.getId() + "");
+            return new RespBean("success", articleDTO.getId() + "");
         } else {
-            return new RespBean("error", article.getState() == 0 ? "文章保存失败!" : "文章发表失败!");
+            return new RespBean("error", articleDTO.getState() == 0 ? "文章保存失败!" : "文章发表失败!");
         }
     }
 
@@ -76,30 +79,37 @@ public class ArticleController {
     }
 
     @RequestMapping(value = "/all", method = RequestMethod.GET)
-    public Map<String, Object> getArticleByState(@RequestParam(value = "state", defaultValue = "-1") Integer state, @RequestParam(value = "page", defaultValue = "1") Integer page, @RequestParam(value = "count", defaultValue = "6") Integer count,String keywords) {
-        int totalCount = articleService.getArticleCountByState(state, Util.getCurrentUser().getId(),keywords);
-        List<Article> articles = articleService.getArticleByState(state, page, count,keywords);
-        Map<String, Object> map = new HashMap<>();
-        map.put("totalCount", totalCount);
-        map.put("articles", articles);
-        return map;
+    public PageResultDTO<ArticleDetailDTO> getArticleByState(@RequestParam(value = "state", defaultValue = "-1") Integer state,
+                                                           @RequestParam(value = "page", defaultValue = "1") Integer page,
+                                                           @RequestParam(value = "count", defaultValue = "6") Integer count,
+                                                           String keywords) {
+        ArticleQueryDTO queryDTO = new ArticleQueryDTO();
+        queryDTO.setState(state);
+        queryDTO.setPage(page);
+        queryDTO.setCount(count);
+        queryDTO.setKeywords(keywords);
+        queryDTO.setUid(Util.getCurrentUser().getId().intValue());
+
+        return articleService.getArticleByState(queryDTO);
     }
 
     /**
      * 公开浏览所有已发表的文章
      */
     @RequestMapping(value = "/public/all", method = RequestMethod.GET)
-    public Map<String, Object> getPublicArticles(@RequestParam(value = "page", defaultValue = "1") Integer page, @RequestParam(value = "count", defaultValue = "6") Integer count, String keywords) {
-        int totalCount = articleService.getPublicArticleCount(keywords);
-        List<Article> articles = articleService.getPublicArticles(page, count, keywords);
-        Map<String, Object> map = new HashMap<>();
-        map.put("totalCount", totalCount);
-        map.put("articles", articles);
-        return map;
+    public PageResultDTO<ArticleDetailDTO> getPublicArticles(@RequestParam(value = "page", defaultValue = "1") Integer page,
+                                                           @RequestParam(value = "count", defaultValue = "6") Integer count,
+                                                           String keywords) {
+        ArticleQueryDTO queryDTO = new ArticleQueryDTO();
+        queryDTO.setPage(page);
+        queryDTO.setCount(count);
+        queryDTO.setKeywords(keywords);
+
+        return articleService.getPublicArticles(queryDTO);
     }
 
     @RequestMapping(value = "/{aid}", method = RequestMethod.GET)
-    public Article getArticleById(@PathVariable Long aid) {
+    public ArticleDetailDTO getArticleById(@PathVariable Long aid) {
         return articleService.getArticleById(aid);
     }
 
@@ -107,7 +117,7 @@ public class ArticleController {
      * 公开浏览文章详情
      */
     @RequestMapping(value = "/public/{aid}", method = RequestMethod.GET)
-    public Article getPublicArticleById(@PathVariable Long aid) {
+    public ArticleDetailDTO getPublicArticleById(@PathVariable Long aid) {
         return articleService.getArticleById(aid);
     }
 
@@ -177,14 +187,14 @@ public class ArticleController {
     @RequestMapping("/dataStatistics")
     public Map<String,Object> dataStatistics() {
         Map<String, Object> map = new HashMap<>();
-        List<String> categories = articleService.getCategories();
-        List<Integer> dataStatistics = articleService.getDataStatistics();
-        
-        // 添加登录日志统计
         Long currentUserId = Util.getCurrentUser().getId();
+        List<String> categories = articleService.getCategories(currentUserId);
+        List<Integer> dataStatistics = articleService.getDataStatistics(currentUserId);
+
+        // 添加登录日志统计
         List<String> loginDates = loginLogService.getLoginDates(currentUserId);
         List<Integer> loginCounts = loginLogService.getLoginCounts(currentUserId);
-        
+
         map.put("categories", categories);
         map.put("ds", dataStatistics);
         map.put("loginDates", loginDates);

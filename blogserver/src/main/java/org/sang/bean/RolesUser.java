@@ -5,11 +5,12 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 角色表实体类
+ * 用户角色关联表实体类
  */
 @Getter
 @Setter
-public class Role {
+public class RolesUser {
     private Integer id;
-    private String name;
+    private Integer rid;
+    private Integer uid;
 }

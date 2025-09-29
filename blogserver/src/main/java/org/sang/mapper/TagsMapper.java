@@ -2,6 +2,7 @@ package org.sang.mapper;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.sang.bean.Tags;
 
 import java.util.List;
 
@@ -17,4 +18,6 @@ public interface TagsMapper {
     List<Long> getTagsIdByTagName(@Param("tagNames") String[] tagNames);
 
     int saveTags2ArticleTags(@Param("tagIds") List<Long> tagIds, @Param("aid") Long aid);
+
+    List<Tags> getTagsByAid(Long aid);
 }
