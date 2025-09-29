@@ -86,3 +86,4 @@ public class LoginRecordDTO {
         this.loginTime = loginTime;
     }
 }
+

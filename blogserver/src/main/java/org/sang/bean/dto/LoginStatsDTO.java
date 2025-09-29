@@ -64,3 +64,4 @@ public class LoginStatsDTO {
         this.lastLoginIp = lastLoginIp;
     }
 }
+

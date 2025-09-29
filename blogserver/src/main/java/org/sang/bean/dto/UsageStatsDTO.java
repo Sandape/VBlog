@@ -74,3 +74,4 @@ public class UsageStatsDTO {
         this.mostUsedProject = mostUsedProject;
     }
 }
+
