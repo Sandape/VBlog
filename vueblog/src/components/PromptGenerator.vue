@@ -6,7 +6,7 @@
         <h2>选择项目</h2>
         <p>请选择一个项目来使用其配置的AI模型生成Prompt</p>
       </div>
-      
+
       <el-row :gutter="20">
         <el-col :span="24">
           <el-input
@@ -18,7 +18,7 @@
           </el-input>
         </el-col>
       </el-row>
-      
+
       <el-row :gutter="20" v-loading="loading">
         <el-col :span="8" v-for="project in filteredProjects" :key="project.id">
           <el-card
@@ -54,14 +54,14 @@
           </el-card>
         </el-col>
       </el-row>
-      
+
       <div v-if="filteredProjects.length === 0 && !loading" class="no-projects">
         <el-empty description="没有找到项目">
           <el-button type="primary" @click="$router.push('/createProject')">创建项目</el-button>
         </el-empty>
       </div>
     </div>
-    
+
     <!-- Prompt生成表单阶段 -->
     <div v-if="selectedProject" class="prompt-generation">
       <div class="generation-header">
@@ -72,7 +72,7 @@
           <span class="api-url">{{ getDisplayUrl(selectedProject.apiUrl) }}</span>
         </div>
       </div>
-      
+
       <el-row :gutter="20">
         <!-- 表单填写区域 -->
         <el-col :span="16">
@@ -81,46 +81,46 @@
               <span>接口信息填写</span>
               <el-button @click="resetForm" type="text" icon="el-icon-refresh">重置表单</el-button>
             </div>
-            
+
             <el-form :model="apiForm" :rules="formRules" ref="apiForm" label-width="120px">
               <!-- 基础信息 -->
               <el-form-item label="接口名称" prop="apiName">
                 <el-input v-model="apiForm.apiName" placeholder="请输入接口名称，如：用户登录接口"></el-input>
               </el-form-item>
-              
+
               <el-form-item label="接口路径" prop="apiPath">
                 <el-input v-model="apiForm.apiPath" placeholder="请输入接口路径，如：POST /api/user/login"></el-input>
               </el-form-item>
-              
+
               <el-form-item label="接口描述">
-                <el-input 
-                  type="textarea" 
-                  :rows="3" 
-                  v-model="apiForm.apiDesc" 
+                <el-input
+                  type="textarea"
+                  :rows="3"
+                  v-model="apiForm.apiDesc"
                   placeholder="请输入接口描述（可选）">
                 </el-input>
               </el-form-item>
-              
+
               <!-- 请求体 -->
               <el-form-item label="接口请求体">
-                <el-input 
-                  type="textarea" 
-                  :rows="8" 
-                  v-model="apiForm.apiRequest" 
+                <el-input
+                  type="textarea"
+                  :rows="8"
+                  v-model="apiForm.apiRequest"
                   placeholder="请输入接口请求体JSON格式（可选）&#10;示例：&#10;{&#10;  &quot;username&quot;: &quot;string&quot;,&#10;  &quot;password&quot;: &quot;string&quot;&#10;}">
                 </el-input>
               </el-form-item>
-              
+
               <!-- 响应体 -->
               <el-form-item label="接口响应体">
-                <el-input 
-                  type="textarea" 
-                  :rows="8" 
-                  v-model="apiForm.apiResponse" 
+                <el-input
+                  type="textarea"
+                  :rows="8"
+                  v-model="apiForm.apiResponse"
                   placeholder="请输入接口响应体JSON格式（可选）&#10;示例：&#10;{&#10;  &quot;code&quot;: 200,&#10;  &quot;message&quot;: &quot;成功&quot;,&#10;  &quot;data&quot;: {&#10;    &quot;userId&quot;: 1,&#10;    &quot;token&quot;: &quot;...&quot;&#10;  }&#10;}">
                 </el-input>
               </el-form-item>
-              
+
               <!-- SQL列表 -->
               <el-form-item label="数据库表SQL" prop="apiSqlList">
                 <div class="sql-list-container">
@@ -174,12 +174,12 @@
                   </div>
                 </div>
               </el-form-item>
-              
+
               <!-- 操作按钮 -->
               <el-form-item>
-                <el-button 
-                  type="primary" 
-                  @click="generatePrompt" 
+                <el-button
+                  type="primary"
+                  @click="generatePrompt"
                   :loading="isGenerating"
                   :disabled="!canGenerate">
                   {{ isGenerating ? 'AI解读生成中...' : '生成Prompt' }}
@@ -188,7 +188,7 @@
               </el-form-item>
             </el-form>
           </el-card>
-          
+
 
           <!-- 发表Prompt面板 -->
           <el-container v-if="generatedPrompt" class="publish-container" style="margin-top: 20px;">
@@ -259,7 +259,7 @@
               <p><strong>拥有者:</strong> {{ selectedProject.ownerNickname }}</p>
             </div>
           </el-card>
-          
+
           <!-- 历史记录 -->
           <el-card class="sidebar-card" style="margin-top: 20px;">
             <div slot="header">
@@ -267,9 +267,9 @@
               <el-button @click="loadPromptLogs" type="text" icon="el-icon-refresh" size="mini">刷新</el-button>
             </div>
             <div class="history-list" v-loading="historyLoading">
-              <div 
-                v-for="log in promptLogs" 
-                :key="log.id" 
+              <div
+                v-for="log in promptLogs"
+                :key="log.id"
                 class="history-item"
                 @click="viewHistoryDetail(log)">
                 <div class="history-title">{{ log.apiName }}</div>
@@ -281,21 +281,53 @@
               </div>
             </div>
           </el-card>
-          
+
           <!-- 快速模板 -->
           <el-card class="sidebar-card" style="margin-top: 20px;">
             <div slot="header">
-              <span>快速模板</span>
+              <span>样例模板</span>
             </div>
             <div class="template-list">
-              <el-button 
-                v-for="template in apiTemplates" 
+              <div
+                v-for="template in apiTemplates"
                 :key="template.id"
-                @click="useTemplate(template)"
-                type="text"
-                class="template-button">
-                {{ template.name }}
-              </el-button>
+                class="template-item"
+                @click="useTemplate(template)">
+                <div class="template-icon">
+                  <i class="el-icon-document"></i>
+                </div>
+                <div class="template-content">
+                  <div class="template-title">{{ template.name }}</div>
+                </div>
+                <div class="template-arrow">
+                  <i class="el-icon-right"></i>
+                </div>
+              </div>
+            </div>
+          </el-card>
+
+          <!-- 学习资源 -->
+          <el-card class="sidebar-card" style="margin-top: 20px;">
+            <div slot="header">
+              <span>学习资源</span>
+            </div>
+            <div class="learning-resources">
+              <div
+                v-for="resource in learningResources"
+                :key="resource.id"
+                class="resource-item"
+                @click="openResource(resource)">
+                <div class="resource-icon">
+                  <i :class="resource.icon"></i>
+                </div>
+                <div class="resource-content">
+                  <div class="resource-title">{{ resource.title }}</div>
+                  <div class="resource-description">{{ resource.description }}</div>
+                </div>
+                <div class="resource-arrow">
+                  <i class="el-icon-right"></i>
+                </div>
+              </div>
             </div>
           </el-card>
         </el-col>
@@ -465,7 +497,7 @@ export default {
       },
       tagInputVisible: false,
       tagValue: '',
-      
+
       // 表单数据
       apiForm: {
         apiName: '',
@@ -503,7 +535,7 @@ export default {
           { required: true, message: '请输入SQL语句', trigger: 'blur' }
         ]
       },
-      
+
       // 表单验证规则
       formRules: {
         apiName: [
@@ -519,7 +551,7 @@ export default {
           }
         ]
       },
-      
+
       // 快速模板
       apiTemplates: [
         {
@@ -560,6 +592,24 @@ export default {
               { sql: 'CREATE TABLE `category` (\n  `id` bigint NOT NULL AUTO_INCREMENT,\n  `name` varchar(100) NOT NULL,\n  `status` int DEFAULT \'1\',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;', entityPath: 'com.example.entity.Category' }
             ]
           }
+        }
+      ],
+
+      // 学习资源
+      learningResources: [
+        {
+          id: 1,
+          title: 'CursorRule合集',
+          description: 'Cursor规则集合，包含各种编程语言和开发工具的使用规范',
+          url: 'https://langgptai.feishu.cn/wiki/LCoYw0IU1iIogjkW5u1cvRDqn1d',
+          icon: 'el-icon-setting'
+        },
+        {
+          id: 2,
+          title: '提示词工程合集',
+          description: '提示词工程相关知识集合，帮助你更好地使用AI进行开发',
+          url: 'https://github.com/langgptai/LangGPT/blob/main/README_zh.md',
+          icon: 'el-icon-document'
         }
       ]
     }
@@ -616,18 +666,18 @@ export default {
         this.loading = false
       }
     },
-    
+
     filterProjects() {
       if (!this.searchKeyword) {
         this.filteredProjects = this.allProjects
       } else {
-        this.filteredProjects = this.allProjects.filter(project => 
+        this.filteredProjects = this.allProjects.filter(project =>
           project.projectName.toLowerCase().includes(this.searchKeyword.toLowerCase()) ||
           project.projectCode.toLowerCase().includes(this.searchKeyword.toLowerCase())
         )
       }
     },
-    
+
     selectProject(project) {
       // 检查用户是否有权限操作该项目（必须是项目成员或项目拥有者）
       if (project.userRole === 0 && project.ownerId !== this.$store.state.user.id) {
@@ -645,7 +695,7 @@ export default {
       this.loadPromptLogs()
       this.loadTableMetaList()
     },
-    
+
     backToSelection() {
       this.selectedProject = null
       this.resetForm()
@@ -654,7 +704,7 @@ export default {
       this.resetPublishForm()
       this.promptLogs = []
     },
-    
+
     // 表单相关方法
     resetForm() {
       this.apiForm = {
@@ -790,7 +840,7 @@ export default {
         }
       })
     },
-    
+
     addSql() {
       this.apiForm.apiSqlList.push({ sql: '', entityPath: '' })
     },
@@ -800,7 +850,7 @@ export default {
         this.apiForm.apiSqlList.splice(index, 1)
       }
     },
-    
+
     validateSqlList(rule, value, callback) {
       if (!value || value.length === 0) {
         callback(new Error('请至少添加一个SQL语句'))
@@ -815,12 +865,12 @@ export default {
 
       callback()
     },
-    
+
     useTemplate(template) {
       this.apiForm = { ...template.data }
       this.$message.success('模板已应用')
     },
-    
+
     async generatePrompt() {
       // 表单验证
       this.$refs.apiForm.validate(async (valid) => {
@@ -828,7 +878,7 @@ export default {
           this.$message.error('请完善表单信息')
           return
         }
-        
+
         this.isGenerating = true
         try {
           const requestData = {
@@ -845,9 +895,9 @@ export default {
                 entityPath: item.entityPath || null
               }))
           }
-          
+
           const response = await generatePrompt(requestData)
-          
+
           if (response.data.status === 'success') {
             this.generatedPrompt = response.data.obj
             this.markdownContent = response.data.obj // 设置markdown内容
@@ -881,7 +931,7 @@ export default {
         }
       })
     },
-    
+
     copyPrompt() {
       const textarea = document.createElement('textarea')
       textarea.value = this.generatedPrompt
@@ -891,7 +941,7 @@ export default {
       document.body.removeChild(textarea)
       this.$message.success('Prompt已复制到剪贴板')
     },
-    
+
     downloadPrompt() {
       const element = document.createElement('a')
       const file = new Blob([this.generatedPrompt], { type: 'text/plain' })
@@ -902,17 +952,17 @@ export default {
       document.body.removeChild(element)
       this.$message.success('Prompt已下载')
     },
-    
+
     // 历史记录相关方法
     async loadPromptLogs() {
       if (!this.selectedProject) return
-      
+
       this.historyLoading = true
       try {
         const response = await getUserPromptLogs()
         if (response.data.status === 'success') {
           // 过滤当前项目的记录
-          this.promptLogs = (response.data.obj || []).filter(log => 
+          this.promptLogs = (response.data.obj || []).filter(log =>
             log.projectId === this.selectedProject.id
           ).slice(0, 10) // 只显示最近10条
         } else {
@@ -924,13 +974,13 @@ export default {
         this.historyLoading = false
       }
     },
-    
+
     async viewHistoryDetail(log) {
       try {
         const response = await getPromptLogDetail(log.id)
         if (response.data.status === 'success') {
           const detail = response.data.obj
-          
+
           // 填充表单
           this.apiForm = {
             apiName: detail.apiName || '',
@@ -942,7 +992,7 @@ export default {
               typeof item === 'string' ? { sql: item, entityPath: '' } : item
             ) : [{ sql: '', entityPath: '' }]
           }
-          
+
           // 显示生成的结果
           this.generatedPrompt = detail.finalPrompt || ''
           this.markdownContent = detail.finalPrompt || '' // 设置markdown内容
@@ -965,7 +1015,7 @@ export default {
         this.$message.error('加载详情失败：' + error.message)
       }
     },
-    
+
     formatTime(timestamp) {
       if (!timestamp) return ''
       const date = new Date(timestamp)
@@ -1152,13 +1202,20 @@ export default {
         }
       })
     },
-    
+
     getDisplayUrl(url) {
       try {
         const urlObj = new URL(url)
         return urlObj.hostname
       } catch (error) {
         return url
+      }
+    },
+
+    // 学习资源相关方法
+    openResource(resource) {
+      if (resource.url) {
+        window.open(resource.url, '_blank')
       }
     }
   }
@@ -1451,23 +1508,63 @@ export default {
 .template-list {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 
-.template-button {
-  text-align: left;
-  padding: 10px 12px;
-  border: 1px solid #EBEEF5;
+.template-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #E4E7ED;
   border-radius: 4px;
   background-color: #FAFAFA;
+  cursor: pointer;
   transition: all 0.3s;
-  font-size: 13px;
 }
 
-.template-button:hover {
+.template-item:hover {
   background-color: #F0F9FF;
   border-color: #409EFF;
-  color: #409EFF;
+  transform: translateX(2px);
+}
+
+.template-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #409EFF;
+  border-radius: 50%;
+  margin-right: 12px;
+}
+
+.template-icon i {
+  font-size: 16px;
+  color: white;
+}
+
+.template-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.template-title {
+  font-weight: 500;
+  color: #303133;
+  margin: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-arrow {
+  flex-shrink: 0;
+  color: #C0C4CC;
+  font-size: 14px;
+  margin-left: 8px;
 }
 
 /* 表元相关样式 */
@@ -1578,6 +1675,78 @@ export default {
   border-color: #85CE61;
 }
 
+/* 学习资源样式 */
+.learning-resources {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #E4E7ED;
+  border-radius: 4px;
+  background-color: #FAFAFA;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.resource-item:hover {
+  background-color: #F0F9FF;
+  border-color: #409EFF;
+  transform: translateX(2px);
+}
+
+.resource-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #409EFF;
+  border-radius: 50%;
+  margin-right: 12px;
+}
+
+.resource-icon i {
+  font-size: 16px;
+  color: white;
+}
+
+.resource-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.resource-title {
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 2px;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-description {
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-arrow {
+  flex-shrink: 0;
+  color: #C0C4CC;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .prompt-generator {
@@ -1609,6 +1778,50 @@ export default {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+
+  .resource-item {
+    padding: 8px;
+  }
+
+  .resource-icon {
+    width: 28px;
+    height: 28px;
+    margin-right: 8px;
+  }
+
+  .resource-icon i {
+    font-size: 14px;
+  }
+
+  .resource-title {
+    font-size: 13px;
+  }
+
+  .resource-description {
+    font-size: 11px;
+  }
+
+  .template-item {
+    padding: 10px;
+  }
+
+  .template-icon {
+    width: 28px;
+    height: 28px;
+    margin-right: 8px;
+  }
+
+  .template-icon i {
+    font-size: 14px;
+  }
+
+  .template-title {
+    font-size: 13px;
+  }
+
+  .template-arrow {
+    font-size: 12px;
   }
 }
 </style>
