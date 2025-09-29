@@ -74,8 +74,16 @@ export default {
       getRequest(url).then(resp => {
         this.loading = false
         if (resp.status === 200) {
-          this.articles = resp.data.articles || []
-          this.totalCount = resp.data.totalCount || 0
+          const data = resp.data
+          // 适配新的返回格式：PageResultDTO
+          if (data.records && data.totalCount !== undefined) {
+            this.articles = data.records || []
+            this.totalCount = data.totalCount || 0
+          } else {
+            // 兼容旧的返回格式
+            this.articles = data.articles || []
+            this.totalCount = data.totalCount || 0
+          }
         } else {
           this.$message.error('加载Prompt失败')
         }
@@ -92,6 +100,10 @@ export default {
       this.loadArticles(currentPage, this.pageSize)
     },
     viewArticle(article) {
+      if (!article || !article.id) {
+        this.$message.error('PromptID不存在')
+        return
+      }
       this.$router.push({ path: '/blogDetail', query: { aid: article.id } })
     }
   }

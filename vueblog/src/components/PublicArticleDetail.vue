@@ -74,12 +74,19 @@ export default {
     if (aid) {
       this.loadArticle(aid)
     } else {
-      this.$message.error('PromptID不存在')
+      this.$message.error('PromptID参数缺失')
       this.goBack()
     }
   },
   methods: {
     loadArticle(aid) {
+      // 参数验证
+      if (!aid) {
+        this.$message.error('PromptID参数缺失')
+        this.goBack()
+        return
+      }
+
       this.loading = true
       const url = `/article/public/${aid}`
 

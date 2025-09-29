@@ -38,6 +38,14 @@
     mounted: function () {
       var aid = this.$route.query.aid;
       this.activeName = this.$route.query.an
+
+      // 参数验证
+      if (!aid) {
+        this.$message({type: 'error', message: 'PromptID参数缺失!'});
+        this.goBack();
+        return;
+      }
+
       var _this = this;
       this.loading = true;
       getRequest("/article/" + aid).then(resp=> {

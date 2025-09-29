@@ -68,6 +68,14 @@
       if (from != null && from != '' && from != undefined) {
         var id = this.$route.query.id;
         this.id = id;
+
+        // 参数验证
+        if (!id) {
+          _this.$message({type: 'error', message: 'PromptID参数缺失!'});
+          _this.$router.go(-1);
+          return;
+        }
+
         this.loading = true;
         getRequest("/article/" + id).then(resp=> {
           _this.loading = false;

@@ -179,7 +179,7 @@ public class ArticleServiceImpl implements IArticleService {
 
         // 查询并设置关联数据
         if (article.getUid() != null) {
-            org.sang.bean.User user = userMapper.getUserById(article.getUid().longValue());
+            org.sang.bean.User user = userMapper.getUserById(article.getUid());
             if (user != null) {
                 detailDTO.setNickname(user.getNickname());
             }
@@ -193,7 +193,7 @@ public class ArticleServiceImpl implements IArticleService {
         }
 
         // 查询文章标签
-        List<org.sang.bean.Tags> tags = tagsMapper.getTagsByAid(article.getId().longValue());
+        List<org.sang.bean.Tags> tags = tagsMapper.getTagsByAid(article.getId());
         if (tags != null && !tags.isEmpty()) {
             List<org.sang.bean.dto.TagsDTO> tagsDTOs = new ArrayList<>();
             for (org.sang.bean.Tags tag : tags) {

@@ -118,6 +118,10 @@
         this.loadBlogs(1, this.pageSize);
       },
       itemClick(row){
+        if (!row || !row.id) {
+          this.$message.error('PromptID不存在')
+          return
+        }
         this.$router.push({path: '/blogDetail', query: {aid: row.id}})
       },
       deleteMany(){
@@ -144,8 +148,16 @@
         getRequest(url).then(resp=> {
           _this.loading = false;
           if (resp.status == 200) {
-            _this.articles = resp.data.articles;
-            _this.totalCount = resp.data.totalCount;
+            const data = resp.data;
+            // 适配新的返回格式：PageResultDTO
+            if (data.records && data.totalCount !== undefined) {
+              _this.articles = data.records;
+              _this.totalCount = data.totalCount;
+            } else {
+              // 兼容旧的返回格式
+              _this.articles = data.articles;
+              _this.totalCount = data.totalCount;
+            }
           } else {
             _this.$message({type: 'error', message: '数据加载失败!'});
           }

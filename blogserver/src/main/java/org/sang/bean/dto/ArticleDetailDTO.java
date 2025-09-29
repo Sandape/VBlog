@@ -1,6 +1,5 @@
 package org.sang.bean.dto;
 
-import lombok.Data;
 import java.sql.Timestamp;
 import java.util.List;
 
@@ -13,13 +12,13 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ArticleDetailDTO {
-    private Integer id;
+    private Long id;
     private String title;
     private String mdContent;
     private String htmlContent;
     private String summary;
-    private Integer cid;
-    private Integer uid;
+    private Long cid;
+    private Long uid;
     private Timestamp publishDate;
     private Timestamp editTime;
     private Integer state;
